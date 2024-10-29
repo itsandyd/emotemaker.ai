@@ -21,7 +21,7 @@ export async function POST(req: Request) {
       return new NextResponse("Image URL is required", { status: 400 });
     }
 
-    const result = await fal.subscribe("fal-ai/birefnet", {
+    const result = await fal.subscribe("fal-ai/birefnet/v2", {
       input: {
         image_url: image
       },
