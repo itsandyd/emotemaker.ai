@@ -26,6 +26,7 @@ import { DrawSidebar } from "./draw-sidebar"
 import { InpaintSidebar } from "./inpaint-sidebar" // Add this import
 import { EnhanceSidebar } from "./enhance-sidebar"
 import { VideoGeneratorSidebar } from "./video-sidebar"
+import { VideoControls } from './video-controls';
 
 interface EditorProps {
   userId: string;
@@ -71,8 +72,13 @@ export const Editor = ({ userId, emotes: initialEmotes }: EditorProps) => {
     const canvas = new fabric.Canvas(
       canvasRef.current, 
       {
+        backgroundColor: '#f0f0f0',
+        width: 500,
+        height: 500,
         controlsAboveOverlay: true,
         preserveObjectStacking: true,
+        renderOnAddRemove: true,
+        stateful: true,
       }
     )
 
@@ -91,12 +97,12 @@ export const Editor = ({ userId, emotes: initialEmotes }: EditorProps) => {
   }, [])
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col h-full">
       <Navbar 
         activeTool={activeTool}
         onChangeActiveTool={onChangeActiveTool}
       />
-      <div className="absolute h-[calc(100%-134px)] w-full top-[134px] flex"> 
+      <div className="flex flex-1 overflow-hidden"> 
         <Sidebar 
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
@@ -141,11 +147,11 @@ export const Editor = ({ userId, emotes: initialEmotes }: EditorProps) => {
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         /> */}
-        <EnhanceSidebar 
+        {/* <EnhanceSidebar 
           editor={editor}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
-        />
+        /> */}
         <EmoteSidebar 
           editor={editor}
           activeTool={activeTool}
@@ -153,13 +159,13 @@ export const Editor = ({ userId, emotes: initialEmotes }: EditorProps) => {
           emotes={emotes} // Pass emotes as props
           setCurrentPrompt={setCurrentPrompt}
         />
-        <VideoGeneratorSidebar 
+        {/* <VideoGeneratorSidebar 
           editor={editor}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
           emotes={emotes}
           setCurrentPrompt={setCurrentPrompt}
-        />
+        /> */}
         <EmoteGeneratorSidebar 
           editor={editor}
           activeTool={activeTool}
@@ -182,19 +188,20 @@ export const Editor = ({ userId, emotes: initialEmotes }: EditorProps) => {
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-        <main className="bg-muted flex-1 overflow-auto relative flex flex-col">
+        <main className="flex-1 flex flex-col overflow-hidden">
           <Toolbar 
             editor={editor}
             activeTool={activeTool}
             onChangeActiveTool={onChangeActiveTool}
             addEmote={addEmote}
             currentPrompt={currentPrompt}
-            key={JSON.stringify(
-              editor?.canvas.getActiveObject()
-            )}
+            key={JSON.stringify(editor?.canvas.getActiveObject())}
           />
-          <div className="flex-1 h-[calc(100%-56px)] bg-muted" ref={containerRef}>
+          <div className="flex-1 relative bg-muted" ref={containerRef}>
             <canvas ref={canvasRef} />
+            <div className="absolute inset-0 pointer-events-none">
+                <VideoControls editor={editor} />
+            </div>
           </div>
           <Footer />
         </main>

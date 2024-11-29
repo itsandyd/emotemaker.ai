@@ -4,6 +4,34 @@ import { ITextOptions } from "fabric/fabric-impl";
 
 import * as material from "material-colors"
 
+// First, declare the fabric module extensions
+declare module 'fabric/fabric-impl' {
+    interface IImageOptions {
+        objectType?: string;
+        startTime?: number;
+        endTime?: number;
+    }
+
+    interface Image {
+        startTime?: number;
+        endTime?: number;
+    }
+}
+
+// Then define the VideoObject interface
+export interface VideoObject extends fabric.Image {
+    startTime: number;
+    endTime: number;
+    objectType: 'video';
+    getElement(): HTMLVideoElement;
+    scaleX: number;
+    scaleY: number;
+    width: number;
+    height: number;
+    left: number;
+    top: number;
+}
+
 // Add these type definitions at the top of the file
 type BaseOption = {
     name: string;
@@ -246,6 +274,12 @@ export interface Editor {
     clearMask: () => void; // Add this method
     enhanceImage: () => Promise<void>;
     generateVideo: () => Promise<void>;
+    addVideo: (url: string) => Promise<VideoObject>;
+    updateVideoTrim: (startTime: number, endTime: number) => void;
+    getVideoTrimTimes: () => { startTime: number; endTime: number } | null;
+    playActiveVideo: () => void;
+    pauseActiveVideo: () => void;
+    isVideoObject: (object: fabric.Object) => boolean;
 
     
 }
@@ -612,52 +646,85 @@ type ModelOption = EnhancementModel['options'][number];
 // Export these types
 export type { EnhancementModel, ModelOption };
 
-// Add this near the enhancement models definition
-export const videoGeneration = {
-    models: [
-        {
-            name: "Runway Gen3 Turbo",
-            apiRoute: "/api/models/fal/runway-gen3-turbo-image-to-video",
-            description: "Generate videos from images using Runway Gen3 Turbo model.",
-            options: [
-                {
-                    name: "prompt",
-                    type: "string" as const,
-                    default: ""
-                },
-                // {
-                //     name: "image_url",
-                //     type: "string" as const,
-                //     default: ""
-                // },
-                {
-                    name: "duration",
-                    type: "select" as const,
-                    values: ["5", "10"],
-                    default: "5"
-                },
-                {
-                    name: "ratio",
-                    type: "select" as const,
-                    values: ["16:9", "9:16"],
-                    default: "16:9"
-                },
-                {
-                    name: "seed",
-                    type: "number" as const,
-                    min: 0,
-                    max: 2147483647,
-                    step: 1,
-                    default: -1
-                }
-            ] as const
-        }
-    ] as const,
+// At the top with other type declarations
+export type VideoModelOption = 
+  | {
+      name: string;
+      type: "select";
+      values: readonly string[];
+      default: string;
+    }
+  | {
+      name: string;
+      type: "number";
+      min: number;
+      max: number;
+      step: number;
+      default: number;
+    }
+  | {
+      name: string;
+      type: "string";
+      default: string;
+    }
+  | {
+      name: string;
+      type: "boolean";
+      default: boolean;
+    };
+
+export type VideoGenerationModel = {
+  name: string;
+  apiRoute: string;
+  description: string;
+  options: readonly VideoModelOption[];
 };
 
-// Add these type definitions
-type VideoGenerationModel = typeof videoGeneration.models[number];
-type VideoModelOption = VideoGenerationModel['options'][number];
-
-// Export these types
-export type { VideoGenerationModel, VideoModelOption };
+// Configuration object
+export const videoGeneration = {
+  models: [
+    {
+      name: "Minimax",
+      apiRoute: "/api/models/fal/minimax-video/image-to-video",
+      description: "Generate videos from images using Minimax model.",
+      options: [
+        {
+          name: "duration",
+          type: "select",
+          values: ["5", "10"],
+          default: "5"
+        },
+        {
+          name: "ratio",
+          type: "select",
+          values: ["16:9", "9:16"],
+          default: "16:9"
+        },
+        {
+          name: "prompt_optimizer",
+          type: "boolean",
+          default: true
+        }
+      ] as const
+    },
+    {
+      name: "Runway Gen3 Turbo",
+      apiRoute: "/api/models/fal/runway-gen3-turbo-image-to-video",
+      description: "Generate videos from images using Runway Gen3 Turbo model.",
+      options: [
+        {
+          name: "duration",
+          type: "select",
+          values: ["5", "10"],
+          default: "5"
+        },
+        {
+          name: "ratio",
+          type: "select",
+          values: ["16:9", "9:16"],
+          default: "16:9"
+        }
+      ] as const
+    }
+  ] as const,
+} as const;

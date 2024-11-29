@@ -1,5 +1,3 @@
-
-
 import { Editor } from "@/app/features/editor/components/editor";
 
 import { auth } from "@clerk/nextjs/server";
@@ -30,7 +28,7 @@ const EditorProjectIdPage = async () => {
   }
 
   return (
-    <div>
+    <div className="h-screen flex flex-col">
       <Editor userId={userId} emotes={emotes} />
     </div>
   );

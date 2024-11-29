@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { useUser } from '@clerk/nextjs'
 
 const profileFormSchema = z.object({
   name: z.string().min(2, {
@@ -25,6 +26,7 @@ const profileFormSchema = z.object({
 
 export function ProfileFormDialog() {
   const [isOpen, setIsOpen] = useState(true)
+  const { user } = useUser()
 
   const form = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -40,12 +42,20 @@ export function ProfileFormDialog() {
 
   async function onSubmit(values: z.infer<typeof profileFormSchema>) {
     try {
-      await axios.post('/api/profile', values)
+      if (!user) {
+        throw new Error('User not authenticated')
+      }
+
+      await axios.post('/api/profile', {
+        ...values,
+        userId: user.id
+      })
+      
       toast.success('Profile updated successfully!')
       setIsOpen(false)
     } catch (error) {
+      console.error('Profile update error:', error)
       toast.error('Failed to update profile.')
-      console.error(error)
     }
   }
 

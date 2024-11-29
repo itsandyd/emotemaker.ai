@@ -18,6 +18,7 @@ import { Emote } from "@prisma/client";
 import * as fal from "@fal-ai/serverless-client";
 import { Slider } from "@/components/ui/slider";
 import axios from "axios"; // Import axios
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
 // Add this type definition at the top of your file
 type FalVideoResponse = {
@@ -127,6 +128,71 @@ export const VideoGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
         <div className="p-4">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium">Select an emote:</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {paginatedEmotes.map((emote) => (
+                    <div
+                      key={emote.id}
+                      className={`relative w-full pt-[100%] cursor-pointer border rounded-sm overflow-hidden ${
+                        selectedEmote?.id === emote.id ? 'ring-2 ring-primary' : ''
+                      }`}
+                      onClick={() => {
+                        setSelectedEmote(emote);
+                        console.log("Emote selected, image URL:", emote.imageUrl);
+                      }}
+                    >
+                      <img
+                        src={emote.imageUrl!}
+                        alt={emote.prompt || emote.id}
+                        className="absolute top-0 left-0 w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex justify-between items-center">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm font-medium">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <FormField
+                control={form.control}
+                name="prompt"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Motion Description</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Describe how you want the image to move..."
+                        className="resize-none"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="model"
@@ -157,6 +223,7 @@ export const VideoGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                   </FormItem>
                 )}
               />
+
               {selectedModel.options.map((option) => (
                 <FormField
                   key={option.name}
@@ -165,39 +232,70 @@ export const VideoGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{option.name}</FormLabel>
-                      {option.type === "select" ? (
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={String(field.value)}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={`Select ${option.name}`} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {option.values.map((value) => (
-                              <SelectItem key={value} value={value}>
-                                {value}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : option.type === "number" ? (
-                        <Slider
-                          min={option.min}
-                          max={option.max}
-                          step={option.step}
-                          value={[field.value as number]}
-                          onValueChange={(value) => field.onChange(value[0])}
-                        />
-                      ) : option.type === "string" ? (
-                        <Textarea {...field} />
-                      ) : null}
+                      <FormControl>
+                        {(() => {
+                          if (option.type === "select") {
+                            return (
+                              <Select 
+                                onValueChange={field.onChange} 
+                                defaultValue={String(field.value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder={`Select ${option.name}`} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {option.values.map((value) => (
+                                    <SelectItem key={value} value={value}>
+                                      {value}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            );
+                          }
+                          
+                          if (option.type === "number") {
+                            return (
+                              <Slider
+                                min={option.min}
+                                max={option.max}
+                                step={option.step}
+                                value={[field.value as number]}
+                                onValueChange={(value) => field.onChange(value[0])}
+                              />
+                            );
+                          }
+                          
+                          if (option.type === "string") {
+                            return <Textarea {...field} />;
+                          }
+                          
+                          if (option.type === "boolean") {
+                            return (
+                              <Select 
+                                onValueChange={(value) => field.onChange(value === "true")} 
+                                defaultValue={String(field.value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder={`Select ${option.name}`} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="true">Yes</SelectItem>
+                                  <SelectItem value="false">No</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            );
+                          }
+                          
+                          return null;
+                        })()}
+                      </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
               ))}
+
               <Button 
                 type="submit" 
                 disabled={isGenerating} 
@@ -208,58 +306,51 @@ export const VideoGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
             </form>
           </Form>
           
-          <div className="mt-4">
-            <h3 className="text-sm font-medium mb-2">Select an emote:</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {paginatedEmotes.map((emote) => (
-                <div
-                  key={emote.id}
-                  className={`relative w-full pt-[100%] cursor-pointer border rounded-sm overflow-hidden ${
-                    selectedEmote?.id === emote.id ? 'ring-2 ring-primary' : ''
-                  }`}
-                  onClick={() => {
-                    setSelectedEmote(emote);
-                    console.log("Emote selected, image URL:", emote.imageUrl); // Log when an emote is selected
-                  }}
-                >
-                  <img
-                    src={emote.imageUrl!}
-                    alt={emote.prompt || emote.id}
-                    className="absolute top-0 left-0 w-full h-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-            {totalPages > 1 && (
-              <div className="mt-2 flex justify-between items-center">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-medium">
-                  {currentPage} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-          
           {generatedVideoUrl && (
             <div className="mt-4">
-              <video controls src={generatedVideoUrl} className="w-full">
-                Your browser does not support the video tag.
-              </video>
+              <div className="relative aspect-video w-full bg-muted rounded-sm overflow-hidden">
+                <video 
+                  controls 
+                  src={generatedVideoUrl} 
+                  className="w-full h-full"
+                >
+                  Your browser does not support the video tag.
+                </video>
+                <Button
+                  onClick={async () => {
+                    if (editor?.addVideo) {
+                      try {
+                        // Create and configure video element first
+                        const videoElement = document.createElement('video');
+                        videoElement.crossOrigin = 'anonymous';
+                        videoElement.src = generatedVideoUrl;
+                        videoElement.autoplay = false;
+                        videoElement.muted = true;
+                        videoElement.loop = true;
+                        videoElement.playsInline = true;
+                        
+                        // Wait for video to load before adding to canvas
+                        await new Promise((resolve) => {
+                          videoElement.addEventListener('loadedmetadata', resolve);
+                          videoElement.load();
+                        });
+                        
+                        // Now add the video to canvas
+                        await editor.addVideo(generatedVideoUrl);
+                        toast.success('Video added to canvas');
+                      } catch (error) {
+                        console.error('Error adding video to canvas:', error);
+                        toast.error('Failed to add video to canvas');
+                      }
+                    }
+                  }}
+                  className="absolute bottom-2 right-2"
+                  size="sm"
+                  variant="secondary"
+                >
+                  Add to Canvas
+                </Button>
+              </div>
             </div>
           )}
         </div>

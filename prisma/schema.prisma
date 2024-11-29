@@ -87,6 +87,7 @@ model Emote {
   style             String?
   model             String?
   imageUrl          String?       @db.Text
+  videoUrl          String? // Optional video URL
   originalCreatorId String?
   createdAt         DateTime?     @default(now())
   emoteForSale      EmoteForSale?
@@ -257,4 +258,13 @@ model UserEmote {
   @@unique([userId, emoteId])
   @@index([userId])
   @@index([emoteId])
+}
+
+model Video {
+  id          String   @id @default(cuid())
+  userId      String
+  prompt      String
+  videoUrl    String
+  originalUrl String
+  createdAt   DateTime @default(now())
 }

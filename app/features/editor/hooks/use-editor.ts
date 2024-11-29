@@ -2,7 +2,7 @@ import { useCallback, useState, useMemo } from "react"
 
 import { fabric } from "fabric"
 import { useAutoResize } from "./use-auto-resize";
-import { BuildEditorProps, CIRCLE_OPTIONS, Editor, EditorHookProps, FILL_COLOR, FONT_FAMILY, RECTANGLE_OPTIONS, STROKE_COLOR, STROKE_DASH_ARRAY, STROKE_WIDTH, TEXT_OPTIONS } from "../types";
+import { BuildEditorProps, CIRCLE_OPTIONS, Editor, EditorHookProps, FILL_COLOR, FONT_FAMILY, RECTANGLE_OPTIONS, STROKE_COLOR, STROKE_DASH_ARRAY, STROKE_WIDTH, TEXT_OPTIONS, VideoObject } from "../types";
 import { useCanvasEvents } from "./use-canvas-events";
 import { createFilter, downloadFile, isTextType } from "../utils";
 import { ITextOptions } from "fabric/fabric-impl";
@@ -414,6 +414,152 @@ const buildEditor = ({
         // Then update the UI to show the generated video
     };
 
+    const addVideo = (url: string): Promise<VideoObject> => {
+        return new Promise((resolve, reject) => {
+            try {
+                const videoElement = document.createElement('video');
+                videoElement.crossOrigin = 'anonymous';
+                videoElement.src = url;
+                videoElement.autoplay = false;
+                videoElement.muted = true;
+                videoElement.loop = true;
+                videoElement.playsInline = true;
+                videoElement.controls = false;
+
+                console.log('Creating video element with URL:', url);
+
+                // Wait for metadata to load
+                videoElement.addEventListener('loadedmetadata', () => {
+                    console.log('Video metadata loaded:', {
+                        width: videoElement.videoWidth,
+                        height: videoElement.videoHeight,
+                        duration: videoElement.duration
+                    });
+
+                    // Create fabric video object
+                    const fabricVideo = new fabric.Image(videoElement, {
+                        objectType: 'video',
+                        left: 0,
+                        top: 0,
+                        width: videoElement.videoWidth,
+                        height: videoElement.videoHeight,
+                        scaleX: 1,
+                        scaleY: 1,
+                        originX: 'center',
+                        originY: 'center',
+                        startTime: 0,
+                        endTime: videoElement.duration
+                    }) as VideoObject;
+
+                    // Scale to fit workspace
+                    const workspace = getWorkspace();
+                    if (workspace) {
+                        const workspaceWidth = workspace.width || 500;
+                        const workspaceHeight = workspace.height || 500;
+
+                        const scaleX = workspaceWidth / videoElement.videoWidth;
+                        const scaleY = workspaceHeight / videoElement.videoHeight;
+                        const scale = Math.min(scaleX, scaleY);
+
+                        fabricVideo.scale(scale);
+                    }
+
+                    // Add to canvas
+                    addToCanvas(fabricVideo);
+
+                    // Set up render loop
+                    let renderLoop: number;
+                    const startRenderLoop = () => {
+                        const render = () => {
+                            if (canvas.contains(fabricVideo)) {
+                                fabricVideo.dirty = true;
+                                canvas.renderAll();
+                                renderLoop = requestAnimationFrame(render);
+                            } else {
+                                cancelAnimationFrame(renderLoop);
+                            }
+                        };
+                        render();
+                    };
+
+                    // Start playback
+                    videoElement.play()
+                        .then(() => {
+                            console.log('Video playback started');
+                            startRenderLoop();
+                            resolve(fabricVideo);
+                        })
+                        .catch(error => {
+                            console.error('Error playing video:', error);
+                            reject(error);
+                        });
+
+                    // Clean up
+                    fabricVideo.on('removed', () => {
+                        console.log('Video object removed, cleaning up');
+                        videoElement.pause();
+                        videoElement.src = '';
+                        cancelAnimationFrame(renderLoop);
+                    });
+                });
+
+                videoElement.addEventListener('error', (e) => {
+                    console.error('Video loading error:', videoElement.error);
+                    reject(new Error(`Failed to load video: ${videoElement.error?.message || 'Unknown error'}`));
+                });
+
+                // Start loading the video
+                videoElement.load();
+
+            } catch (error) {
+                console.error('Error in addVideo:', error);
+                reject(error);
+            }
+        });
+    };
+
+    const isVideoObject = (object: fabric.Object): boolean => {
+        return object.type === 'image' && (object as any).objectType === 'video';
+    };
+
+    const playActiveVideo = () => {
+        const activeObject = canvas.getActiveObject();
+        if (activeObject && isVideoObject(activeObject)) {
+            const videoElement = (activeObject as fabric.Image).getElement() as HTMLVideoElement;
+            videoElement.play();
+        }
+    };
+
+    const pauseActiveVideo = () => {
+        const activeObject = canvas.getActiveObject();
+        if (activeObject && isVideoObject(activeObject)) {
+            const videoElement = (activeObject as fabric.Image).getElement() as HTMLVideoElement;
+            videoElement.pause();
+        }
+    };
+
+    const updateVideoTrim = (startTime: number, endTime: number) => {
+        const activeObject = canvas.getActiveObject() as VideoObject;
+        if (activeObject && isVideoObject(activeObject)) {
+            activeObject.startTime = startTime;
+            activeObject.endTime = endTime;
+            
+            const videoElement = activeObject.getElement() as HTMLVideoElement;
+            videoElement.currentTime = startTime;
+        }
+    };
+
+    const getVideoTrimTimes = () => {
+        const activeObject = canvas.getActiveObject() as VideoObject;
+        if (activeObject && isVideoObject(activeObject)) {
+            return {
+                startTime: activeObject.startTime,
+                endTime: activeObject.endTime
+            };
+        }
+        return null;
+    };
+
     return {
 
         enableDrawingMode: () => {
@@ -735,6 +881,7 @@ const buildEditor = ({
         updateImage,
         startDrawingMask,
         clearMask,
+        addVideo,
 
         getActiveFillColor: () => {
             const selectedObject = selectedObjects[0]
@@ -802,9 +949,15 @@ const buildEditor = ({
             return value
         },
 
+
         selectedObjects,
         enhanceImage,
         generateVideo,
+        playActiveVideo,
+        pauseActiveVideo,
+        isVideoObject,
+        updateVideoTrim,
+        getVideoTrimTimes,
     }
 }
 
