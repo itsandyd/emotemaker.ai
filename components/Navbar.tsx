@@ -106,9 +106,9 @@ export const Navbar = ({
                 </NavigationMenuContent>
               </NavigationMenuItem> */}
             </NavigationMenuList>
-            <Button variant="ghost" className="hidden sm:block">
+            {/* <Button variant="ghost" className="hidden sm:block">
               <Link href="/showcase">Showcase</Link>
-            </Button>
+            </Button> */}
           </NavigationMenu>
         </nav>
         <div className="flex items-center">
