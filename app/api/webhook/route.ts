@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 const priceIdToCredits: { [priceId: string]: number } = {
   // Monthly plans
   'price_1Q8GL9IlERZTJMCm1b6Nuebe': 150,  // Creator plan (monthly)
+  'price_1OjApHIlERZTJMCmkGtSk4Wf': 300, // old plan
   'price_1Q8GLiIlERZTJMCm1QFpLRh3': 500,  // Pro plan (monthly)
   'price_1Q8GM2IlERZTJMCmgwEbI5tO': 1250, // Team plan (monthly)
   
