@@ -107,7 +107,7 @@ export const Navbar = ({
               </NavigationMenuItem> */}
             </NavigationMenuList>
             {/* <Button variant="ghost" className="hidden sm:block">
-              <Link href="/showcase">Showcase</Link>
+              <Link href="/marketplace">Marketplace</Link>
             </Button> */}
           </NavigationMenu>
         </nav>
@@ -167,7 +167,9 @@ export const Navbar = ({
           </DropdownMenu>
           <SignedIn>
             {hasActiveSubscription && <CreditsDisplay credits={credits} />}
-            <UserAccountNav isPro={isPro} />
+            <div className="ml-4">
+              <UserAccountNav isPro={isPro} />
+            </div>
           </SignedIn>
           <SignedOut>
             <Button variant="ghost">

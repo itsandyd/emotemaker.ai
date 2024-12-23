@@ -90,7 +90,7 @@
     "jspdf": "^2.5.1",
     "jszip": "^3.10.1",
     "jys": "^0.0.0",
-    "konva": "^9.3.12",
+    "konva": "^9.3.16",
     "langchain": "^0.2.17",
     "lucide-react": "^0.288.0",
     "material-colors": "^1.2.6",

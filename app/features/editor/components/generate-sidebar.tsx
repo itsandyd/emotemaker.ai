@@ -11,7 +11,7 @@ import { z } from "zod";
 import { useState } from "react";
 import axios, { AxiosResponse } from "axios";
 import { Loader, Sparkle } from "lucide-react";
-import { ActiveTool, Editor, generation } from "../types";
+import { ActiveTool, generation, KonvaEditor } from "../types";
 import Image from "next/image";
 import {
   Select,
@@ -44,11 +44,11 @@ const formSchema = z.object({
 interface EmoteGeneratorSidebarProps {
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
-  editor: Editor | undefined;
+  editor: KonvaEditor | undefined;
   emotes: Emote[];
-}
-
-export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, emotes }: EmoteGeneratorSidebarProps) => {
+  addEmote: (newEmote: Emote) => void;
+  currentPrompt: string;
+}export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, emotes, addEmote, currentPrompt }: EmoteGeneratorSidebarProps) => {
   const [photos, setPhotos] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
@@ -60,7 +60,6 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
   const ITEMS_PER_PAGE = 6;
   const { userId } = useAuth();
   const [selectedModel, setSelectedModel] = useState(generation.models[0]);
-  const [currentPrompt, setCurrentPrompt] = useState<string>("");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -113,7 +112,6 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
       }
 
       setPhotos(imageUrls);
-      setCurrentPrompt(data.prompt); // Store the current prompt
 
       // Automatically save each generated image
       for (const imageUrl of imageUrls) {
@@ -426,3 +424,4 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
     </aside>
   );
 };
+

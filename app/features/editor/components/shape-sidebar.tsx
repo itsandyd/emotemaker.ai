@@ -1,24 +1,20 @@
 import { cn } from "@/lib/utils"
-import { ActiveTool, Editor } from "../types"
+import { ActiveTool, KonvaEditor } from "../types"
 import { ToolSidebarHeader } from "./tool-sidebar-header"
 import { ToolSidebarClose } from "./tool-sidebar-close"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ShapeTool } from "./shape-tool"
-import { FaAcquisitionsIncorporated, FaCat, FaCircle, FaSquare, FaSquareFull, FaStar } from "react-icons/fa"
-import { IoDiamond, IoTriangle } from "react-icons/io5"
-import { CarFrontIcon, DogIcon, LucideMouse } from "lucide-react"
-import { SlEarphonesAlt } from "react-icons/sl";
-import { FaDiamond } from "react-icons/fa6";
-
+import { FaCircle, FaSquare, FaSquareFull } from "react-icons/fa"
+import { IoTriangle } from "react-icons/io5"
+import { FaDiamond } from "react-icons/fa6"
 
 interface ShapeSidebarProps {
     activeTool: ActiveTool;
     onChangeActiveTool: (tool: ActiveTool) => void;
-    editor: Editor | undefined;
+    editor: KonvaEditor | undefined;
 }
 
 export const ShapeSidebar = ({ activeTool, onChangeActiveTool, editor }: ShapeSidebarProps) => {
-
     const onClose = () => {
         onChangeActiveTool("select")
     }
@@ -29,28 +25,28 @@ export const ShapeSidebar = ({ activeTool, onChangeActiveTool, editor }: ShapeSi
             <ScrollArea>
                 <div className="grid grid-cols-3 gap-4 p-4">
                     <ShapeTool 
-                        onClick={() => editor?.addCircle()}
+                        onClick={() => editor?.addShape('circle')}
                         icon={FaCircle}
                     />
                     <ShapeTool 
-                        onClick={() => editor?.addSoftRectangle()}
+                        onClick={() => editor?.addShape('rectangle')}
                         icon={FaSquare}
                     />
                     <ShapeTool 
-                        onClick={() => editor?.addRectangle()}
+                        onClick={() => editor?.addShape('rectangle')}
                         icon={FaSquareFull}
                     />
                     <ShapeTool 
-                        onClick={() => editor?.addTriangle()}
+                        onClick={() => editor?.addShape('triangle')}
                         icon={IoTriangle}
                     />
                     <ShapeTool 
-                      onClick={() => editor?.addInverseTriangle()}
+                        onClick={() => editor?.addShape('inverseTriangle')}
                         icon={IoTriangle}
                         iconClassName="rotate-180"
                     />
                     <ShapeTool 
-                        onClick={() => editor?.addDiamond()}
+                        onClick={() => editor?.addShape('diamond')}
                         icon={FaDiamond}
                     /> 
                 </div>

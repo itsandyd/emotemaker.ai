@@ -96,9 +96,9 @@ export default async function RootLayout({
 
   return (
     <ClerkProvider>
-
       <html lang="en" className="h-full">
         <head>
+          <link href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css" rel="stylesheet" />
         </head>
         <body className={`${inter.className} h-full`}>
             <Navbar isPro={isPro} apiLimitCount={apiLimitCount} credits={credits} hasActiveSubscription={hasActiveSubscription} />
@@ -126,7 +126,6 @@ export default async function RootLayout({
             </TooltipProvider>
         </body>
       </html>
-
     </ClerkProvider>
   )
 }

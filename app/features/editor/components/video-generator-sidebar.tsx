@@ -10,7 +10,7 @@ import { z } from "zod";
 import { useState } from "react";
 import axios from "axios";
 import { Loader } from "lucide-react";
-import { ActiveTool, Editor, VideoGenerationModel, videoGeneration } from "../types";
+import { ActiveTool, Editor } from "../types";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Textarea } from "@/components/ui/textarea";
 import { FileUpload } from "@/components/FileUpload";
@@ -18,11 +18,41 @@ import toast from "react-hot-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Emote } from "@prisma/client";
 
+interface VideoModel {
+  name: string;
+  description: string;
+  endpoint: string;
+  credits: number;
+}
+
+const videoGeneration = {
+  models: [
+    { 
+      name: "Minimax Live",
+      description: "Latest model optimized for creating smooth, natural motion from still images.",
+      endpoint: "/api/models/fal/minimax-video",
+      credits: 5
+    },
+    // { 
+    //   name: "Minimax Classic",
+    //   description: "Classic model for creating smooth, natural motion from still images.",
+    //   endpoint: "/api/models/fal/minimax-video/image-to-video",
+    //   credits: 5
+    // },
+    { 
+      name: "Runway Gen3 Turbo",
+      description: "Excels at creating cinematic motion with detailed control.",
+      endpoint: "/api/models/fal/runway-gen3-turbo-image-to-video",
+      credits: 10
+    }
+  ] satisfies VideoModel[]
+};
+
 const formSchema = z.object({
   prompt: z.string().min(2, { message: "Prompt must be at least 2 characters." }),
   duration: z.string().default("5"),
   ratio: z.string().default("16:9"),
-  model: z.string().default("Minimax"),
+  model: z.string().default(videoGeneration.models[0].name),
   image: z.string().optional(),
 });
 
@@ -45,7 +75,7 @@ export const VideoGeneratorSidebar = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [selectedEmote, setSelectedEmote] = useState<Emote | null>(null);
-  const [selectedModel, setSelectedModel] = useState<VideoGenerationModel>(videoGeneration.models[0]);
+  const [selectedModel, setSelectedModel] = useState<VideoModel>(videoGeneration.models[0]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -53,7 +83,7 @@ export const VideoGeneratorSidebar = ({
       prompt: "",
       duration: "5",
       ratio: "16:9",
-      model: "Minimax"
+      model: "Minimax Live"
     }
   });
 
@@ -65,16 +95,17 @@ export const VideoGeneratorSidebar = ({
 
     setIsGenerating(true);
     try {
-      const apiEndpoint = data.model === "Minimax" 
-        ? '/api/models/fal/minimax-video/image-to-video'
-        : '/api/models/fal/runway-gen3-turbo-image-to-video';
+      const selectedModelData = videoGeneration.models.find(m => m.name === data.model);
+      if (!selectedModelData) {
+        throw new Error("Invalid model selected");
+      }
 
-      const response = await axios.post(apiEndpoint, {
+      const response = await axios.post<{ video: { url: string }, emote: Emote }>(selectedModelData.endpoint, {
         prompt: data.prompt,
         image_url: uploadedImage || selectedEmote?.imageUrl,
         duration: data.duration,
         ratio: data.ratio,
-        prompt_optimizer: data.model === "Minimax" ? true : undefined
+        prompt_optimizer: true
       });
 
       if (response.data?.video?.url) {
@@ -84,9 +115,9 @@ export const VideoGeneratorSidebar = ({
       } else {
         throw new Error("No video URL in response");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating video:", error);
-      toast.error('Failed to generate video. Please try again.');
+      toast.error(error.response?.data || 'Failed to generate video. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -156,10 +187,7 @@ export const VideoGeneratorSidebar = ({
                         </FormControl>
                         <FormMessage />
                         <FormDescription>
-                          {form.watch("model") === "Minimax" 
-                            ? "Minimax model is optimized for creating smooth, natural motion from still images."
-                            : "Runway Gen3 Turbo excels at creating cinematic motion with detailed control."
-                          }
+                          {selectedModel?.description || "Select a model to see its description."}
                         </FormDescription>
                       </FormItem>
                     )}
@@ -263,7 +291,7 @@ export const VideoGeneratorSidebar = ({
               {isGenerating ? (
                 <Loader className="animate-spin" />
               ) : (
-                `Generate Video (${form.watch("model") === "Minimax" ? "5" : "10"} Credits)`
+                `Generate Video (${videoGeneration.models.find(m => m.name === form.watch("model"))?.credits || 5} Credits)`
               )}
             </Button>
           </form>

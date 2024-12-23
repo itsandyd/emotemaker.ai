@@ -147,13 +147,14 @@ export const EnhanceSidebar = ({ activeTool, onChangeActiveTool, editor }: Enhan
 
             if (response.data && response.data.image && response.data.image.url) {
                 // Remove the current active object
-                const activeObject = editor.canvas.getActiveObject();
+                const activeObject = editor.getActiveObject();
                 if (activeObject) {
-                    editor.canvas.remove(activeObject);
+                    activeObject.destroy();
+                    editor.layer?.batchDraw();
                 }
 
                 // Add the enhanced image to the canvas
-                editor.addGeneratedEmote(response.data.image.url);
+                await editor.addImage(response.data.image.url);
                 toast.success('Image enhanced successfully!');
             } else {
                 throw new Error("Unexpected response format");

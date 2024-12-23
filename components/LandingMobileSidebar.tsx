@@ -14,11 +14,11 @@ const routes = [
     icon: LayoutDashboard,
     href: '/emoteboard/editor/1',
   },
-  {
-    label: 'Showcase',
-    icon: StoreIcon,
-    href: '/showcase',
-  },
+  // {
+  //   label: 'Showcase',
+  //   icon: StoreIcon,
+  //   href: '/showcase',
+  // },
 ];
 
 export const LandingMobileSidebar = () => {

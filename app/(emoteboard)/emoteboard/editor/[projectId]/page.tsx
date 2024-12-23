@@ -1,14 +1,25 @@
 import { Editor } from "@/app/features/editor/components/editor";
-
 import { auth } from "@clerk/nextjs/server";
-import { getEmotes } from "../../../../../actions/get-emotes";
 import { redirect } from "next/navigation";
 import { fetchUserEmotes } from "@/actions/fetchUserEmotes";
 import { checkSubscription } from "@/lib/subscription";
 import { db } from "@/lib/db";
 
-const EditorProjectIdPage = async () => {
+interface EditorProjectIdPageProps {
+  params: {
+    projectId: string;
+  };
+  searchParams: {
+    type?: 'video' | 'image';
+  };
+}
+
+const EditorProjectIdPage = async ({ 
+  params,
+  searchParams 
+}: EditorProjectIdPageProps) => {
   const { userId } = auth();
+  const editorType = searchParams.type || 'image';
 
   if (!userId) {
     redirect('/sign-in');
@@ -19,17 +30,21 @@ const EditorProjectIdPage = async () => {
   const user = await db.user.findUnique({
     where: { id: userId },
     select: { isAdmin: true }
-  })
+  });
 
-  const isPro = await checkSubscription()
+  const isPro = await checkSubscription();
 
   if (!isPro && !user?.isAdmin) {
-    redirect('/pricing')
+    redirect('/pricing');
   }
 
   return (
     <div className="h-screen flex flex-col">
-      <Editor userId={userId} emotes={emotes} />
+      <Editor 
+        userId={userId} 
+        emotes={emotes}
+        initialWorkspaceType={editorType}
+      />
     </div>
   );
 };

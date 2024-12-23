@@ -1,27 +1,23 @@
 "use client"
 
-import { useState } from "react";
-import { ActiveTool, Editor } from "../types"
-
+import { useState, useEffect } from "react";
+import { ActiveTool, KonvaEditor, VideoObject } from "../types"
 import { AlignRight, ArrowDown, ArrowUp, ChevronDown, DownloadCloud, EraserIcon, FrameIcon, PaintBucket, PictureInPicture, PictureInPicture2, Save, Scissors, Trash2 } from "lucide-react";
-
 import { BsBorderWidth } from "react-icons/bs";
 import { RxTransparencyGrid } from "react-icons/rx";
-import { isTextType } from "../utils";
-import { ColorPicker } from "./color-picker";
-import { TbColorFilter, TbPictureInPictureFilled } from "react-icons/tb";
-import { Wand2 } from 'lucide-react'; // Add this import
-import { Hint } from "../../../../components/hint";
-import { Button } from "../../../../components/ui/button";
-import { cn } from "../../../../lib/utils";
-import { Loader2 } from "lucide-react"; // Add this import
-import { SlPicture } from "react-icons/sl";
+import { TbColorFilter } from "react-icons/tb";
+import { Loader2 } from "lucide-react";
 import { Emote } from "@prisma/client";
 import toast from "react-hot-toast";
 import { useAuth } from "@clerk/nextjs";
+import { Hint } from "@/components/hint";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Slider } from "@/components/ui/slider";
+import { VideoTimeline } from "./video-timeline";
 
 interface ToolbarProps {
-    editor: Editor | undefined;
+    editor: KonvaEditor | undefined;
     activeTool: ActiveTool;
     onChangeActiveTool: (tool: ActiveTool) => void;
     addEmote: (newEmote: Emote) => void;
@@ -33,18 +29,35 @@ export const Toolbar = ({ editor, activeTool, onChangeActiveTool, addEmote, curr
     const [isRemovingBackground, setIsRemovingBackground] = useState(false);
     const [isSavingEmote, setIsSavingEmote] = useState(false);
     const [isDownloadingEmote, setIsDownloadingEmote] = useState(false);
+    const [startTime, setStartTime] = useState(0);
+    const [endTime, setEndTime] = useState(0);
 
-    const fillColor = editor?.getActiveFillColor()
-    const strokeColor = editor?.getActiveStrokeColor()   
-    const fontFamily = editor?.getActiveFontFamily()
+    const selectedNode = editor?.selectedNode;
+    const fillColor = selectedNode?.attrs?.fill;
+    const strokeColor = selectedNode?.attrs?.stroke;
+    const fontFamily = selectedNode?.attrs?.fontFamily;
 
-    const selectedObjectType = editor?.selectedObjects[0]?.type
+    const isText = selectedNode?.attrs?.text !== undefined;
+    const isImage = selectedNode?.attrs?.image !== undefined;
+    const isVideo = selectedNode && editor?.isVideoObject(selectedNode);
 
-    const isText = isTextType(selectedObjectType)
-    const isImage = selectedObjectType === "image"
-    const isEmote = selectedObjectType === "emote"
+    console.log('Selected node:', selectedNode);
+    console.log('Is video:', isVideo);
+    console.log('Editor:', editor);
+    console.log('Video methods:', {
+        startTime: editor?.getVideoStartTime(),
+        endTime: editor?.getVideoEndTime(),
+        duration: editor?.getVideoDuration()
+    });
 
-    if (editor?.selectedObjects.length === 0) {
+    useEffect(() => {
+        if (editor && editor.selectedNode && editor.isVideoObject(editor.selectedNode)) {
+            setStartTime(editor.getVideoStartTime());
+            setEndTime(editor.getVideoEndTime());
+        }
+    }, [editor?.selectedNode]);
+
+    if (!selectedNode) {
         return (
             <div className="shrink-0 h-[56px] border-b border-gray-300 bg-white w-full flex items-center overflow-x-auto z-[49] p-2 gap-x-2" />
         )
@@ -52,66 +65,107 @@ export const Toolbar = ({ editor, activeTool, onChangeActiveTool, addEmote, curr
 
     return (
         <div className="shrink-0 h-[62px] border-b border-gray-300 bg-white w-full flex items-center overflow-x-auto z-[49] p-2 gap-x-2" >
-                {!isImage && (
-            <div className="flex items-center h-full justify-center">
-
-                <Hint label="Color" side="bottom" sideOffset={5}>
-                    <Button
-                        onClick={() => onChangeActiveTool("fill")}
-                        size="icon"
-                        variant="ghost"
-                        className={cn(activeTool === "fill" && "bg-gray-100")}
-                    >
-                        <div className="w-10 h-10 border rounded-md" style={{ backgroundColor: fillColor || "transparent" }} />
-                    </Button>
-                </Hint>
-            </div>
+            {isVideo && editor && (
+                <>
+                    <div className="flex-1 h-full flex items-center px-2">
+                        <VideoTimeline
+                            videoElement={(editor.selectedNode as VideoObject).getVideoElement()}
+                            startTime={startTime}
+                            endTime={endTime}
+                            duration={editor.getVideoDuration()}
+                            onStartTimeChange={(value) => {
+                                setStartTime(value);
+                                if (editor.selectedNode && editor.isVideoObject(editor.selectedNode)) {
+                                    editor.selectedNode.setStartTime(value);
+                                }
+                            }}
+                            onEndTimeChange={(value) => {
+                                setEndTime(value);
+                                if (editor.selectedNode && editor.isVideoObject(editor.selectedNode)) {
+                                    editor.selectedNode.setEndTime(value);
+                                }
+                            }}
+                        />
+                    </div>
+                    <div className="flex items-center h-full justify-center">
+                        <Hint label="Download Trimmed Video" side="bottom" sideOffset={5}>
+                            <Button
+                                onClick={async () => {
+                                    try {
+                                        await editor.downloadTrimmedVideo();
+                                    } catch (error) {
+                                        console.error('Failed to download trimmed video:', error);
+                                        toast.error('Failed to download trimmed video');
+                                    }
+                                }}
+                                size="icon"
+                                variant="ghost"
+                            >
+                                <Scissors className="size-4" />
+                            </Button>
+                        </Hint>
+                    </div>
+                </>
             )}
-            {!isText && (
-            <div className="flex items-center h-full justify-center">
-                <Hint label="Stroke color" side="bottom" sideOffset={5}>
-                    <Button
-                        onClick={() => onChangeActiveTool("stroke-color")}
-                        size="icon"
-                        variant="ghost"
-                        className={cn(activeTool === "stroke-color" && "bg-gray-100")}
-                    >
-                        <div className="w-10 h-10 border-4 rounded-md" style={{ borderColor: strokeColor || "transparent" }} />
-                    </Button>
-                </Hint>
+            {!isImage && !isVideo && (
+                <div className="flex items-center h-full justify-center">
+                    <Hint label="Color" side="bottom" sideOffset={5}>
+                        <Button
+                            onClick={() => onChangeActiveTool("fill")}
+                            size="icon"
+                            variant="ghost"
+                            className={cn(activeTool === "fill" && "bg-gray-100")}
+                        >
+                            <div className="w-10 h-10 border rounded-md" style={{ backgroundColor: fillColor || "transparent" }} />
+                        </Button>
+                    </Hint>
                 </div>
             )}
-               {!isText && (
-            <div className="flex items-center h-full justify-center">
-                <Hint label="Stroke width" side="bottom" sideOffset={5}>
-                    <Button
-                        onClick={() => onChangeActiveTool("stroke-width")}
-                        size="icon"
-                        variant="ghost"
-                        className={cn(activeTool === "stroke-width" && "bg-gray-100")}
-                    >
-                        <BsBorderWidth className="size-4" />
-                    </Button>
-                </Hint>
-            </div>
-               )}
-                     {isText && (
-            <div className="flex items-center h-full justify-center">
-                <Hint label="Font" side="bottom" sideOffset={5}>
-                    <Button
-                        onClick={() => onChangeActiveTool("font")}
-                        size="icon"
-                        variant="ghost"
-                        className={cn("w-auto px-2 text-sm", activeTool === "stroke-width" && "bg-gray-100")}
-                    >
-                        <div className="max-w-[100px] truncate">
-                            {fontFamily}
-                        </div>
-                        <ChevronDown className="size-4 ml-2 shrink-0"/>
-                    </Button>
-                </Hint>
-            </div>
-               )}
+            {!isText && (
+                <div className="flex items-center h-full justify-center">
+                    <Hint label="Stroke color" side="bottom" sideOffset={5}>
+                        <Button
+                            onClick={() => onChangeActiveTool("stroke")}
+                            size="icon"
+                            variant="ghost"
+                            className={cn(activeTool === "stroke" && "bg-gray-100")}
+                        >
+                            <div className="w-10 h-10 border-4 rounded-md" style={{ borderColor: strokeColor || "transparent" }} />
+                        </Button>
+                    </Hint>
+                </div>
+            )}
+            {!isText && (
+                <div className="flex items-center h-full justify-center">
+                    <Hint label="Stroke width" side="bottom" sideOffset={5}>
+                        <Button
+                            onClick={() => onChangeActiveTool("stroke-width")}
+                            size="icon"
+                            variant="ghost"
+                            className={cn(activeTool === "stroke-width" && "bg-gray-100")}
+                        >
+                            <BsBorderWidth className="size-4" />
+                        </Button>
+                    </Hint>
+                </div>
+            )}
+            {isText && (
+                <div className="flex items-center h-full justify-center">
+                    <Hint label="Font" side="bottom" sideOffset={5}>
+                        <Button
+                            onClick={() => onChangeActiveTool("font")}
+                            size="icon"
+                            variant="ghost"
+                            className={cn("w-auto px-2 text-sm", activeTool === "font" && "bg-gray-100")}
+                        >
+                            <div className="max-w-[100px] truncate">
+                                {fontFamily}
+                            </div>
+                            <ChevronDown className="size-4 ml-2 shrink-0"/>
+                        </Button>
+                    </Hint>
+                </div>
+            )}
             <div className="flex items-center h-full justify-center">
                 <Hint label="Bring forward" side="bottom" sideOffset={5}>
                     <Button
@@ -126,7 +180,7 @@ export const Toolbar = ({ editor, activeTool, onChangeActiveTool, addEmote, curr
             <div className="flex items-center h-full justify-center">
                 <Hint label="Send backwards" side="bottom" sideOffset={5}>
                     <Button
-                        onClick={() => editor?.sendBackwards()}
+                        onClick={() => editor?.sendBackward()}
                         size="icon"
                         variant="ghost"
                     >
@@ -149,53 +203,52 @@ export const Toolbar = ({ editor, activeTool, onChangeActiveTool, addEmote, curr
             <div className="flex items-center h-full justify-center">
                 <Hint label="Delete" side="bottom" sideOffset={5}>
                     <Button
-                        onClick={() => editor?.delete()}
+                        onClick={() => editor?.removeSelected()}
                         size="icon"
                         variant="ghost"
-                        className={cn(activeTool === "opacity" && "bg-gray-100")}
                     >
                         <Trash2 className="size-4"/>
                     </Button>
                 </Hint>
             </div>
             {isImage && (
-            <div className="flex items-center h-full justify-center">
-                <Hint label="Filter" side="bottom" sideOffset={5}>
-                    <Button
-                        onClick={() => onChangeActiveTool("filter")}
-                        size="icon"
-                        variant="ghost"
-                        className={cn(activeTool === "filter" && "bg-gray-100")}
-                    >
-                        <TbColorFilter className="size-4"/>
-                    </Button>
-                </Hint>
-            </div>
+                <div className="flex items-center h-full justify-center">
+                    <Hint label="Filter" side="bottom" sideOffset={5}>
+                        <Button
+                            onClick={() => onChangeActiveTool("filter")}
+                            size="icon"
+                            variant="ghost"
+                            className={cn(activeTool === "filter" && "bg-gray-100")}
+                        >
+                            <TbColorFilter className="size-4"/>
+                        </Button>
+                    </Hint>
+                </div>
             )}
             {isImage && (
-              <div className="flex items-center h-full justify-center">
-                <Hint label="Remove Background" side="bottom" sideOffset={5}>
-                    <Button
-                        onClick={async () => {
-                            setIsRemovingBackground(true);
-                            try {
-                                await editor?.removeBackground();
-                            } finally {
-                                setIsRemovingBackground(false);
-                            }
-                        }}
-                        size="sm"
-                        variant="ghost"
-                        disabled={isRemovingBackground}
-                    >
-                        {isRemovingBackground ? (
-                            <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                            <EraserIcon className="size-4" />
-                        )}
-                    </Button>
-                </Hint>
-            </div>
+                <div className="flex items-center h-full justify-center">
+                    <Hint label="Remove Background" side="bottom" sideOffset={5}>
+                        <Button
+                            onClick={async () => {
+                                setIsRemovingBackground(true);
+                                try {
+                                    await editor?.removeBackground();
+                                } finally {
+                                    setIsRemovingBackground(false);
+                                }
+                            }}
+                            size="sm"
+                            variant="ghost"
+                            disabled={isRemovingBackground}
+                        >
+                            {isRemovingBackground ? (
+                                <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                                <EraserIcon className="size-4" />
+                            )}
+                        </Button>
+                    </Hint>
+                </div>
             )}
             <div className="flex items-center h-full justify-center">
                 <Hint label="Download Emote" side="bottom" sideOffset={5}>
@@ -203,7 +256,7 @@ export const Toolbar = ({ editor, activeTool, onChangeActiveTool, addEmote, curr
                         onClick={async () => {
                             setIsDownloadingEmote(true);
                             try {
-                                await editor?.downloadImage();
+                                await editor?.download();
                             } finally {
                                 setIsDownloadingEmote(false);
                             }
@@ -258,13 +311,6 @@ export const Toolbar = ({ editor, activeTool, onChangeActiveTool, addEmote, curr
                     </Button>
                 </Hint>
             </div>
-            {/* <Button
-                variant={activeTool === "inpaint" ? "secondary" : "ghost"}
-                size="icon"
-                onClick={() => onChangeActiveTool("inpaint")}
-            >
-                <Wand2 className="h-4 w-4" />
-            </Button> */}
         </div>
     )
 }

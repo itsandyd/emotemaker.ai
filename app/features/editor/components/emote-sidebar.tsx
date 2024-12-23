@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, Loader, FileVideo, Image as ImageIcon } from "lucide-react";
 import { Emote } from "@prisma/client";
-import { ActiveTool, Editor } from "../types";
+import { ActiveTool, KonvaEditor } from "../types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -24,20 +24,20 @@ import { toast } from "react-hot-toast";
 interface EmoteSidebarProps {
     activeTool: ActiveTool;
     onChangeActiveTool: (tool: ActiveTool) => void;
-    editor: Editor | undefined;
-    emotes: Emote[];
+    editor: KonvaEditor | undefined;
+    emotes: Emote[] | undefined;
     setCurrentPrompt: (prompt: string) => void;
 }
 
 const ITEMS_PER_PAGE = 10;
 
-export const EmoteSidebar = ({ activeTool, onChangeActiveTool, editor, emotes, setCurrentPrompt }: EmoteSidebarProps) => {
+export const EmoteSidebar = ({ activeTool, onChangeActiveTool, editor, emotes = [], setCurrentPrompt }: EmoteSidebarProps) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [loading, setLoading] = useState(false);
     const [currentTab, setCurrentTab] = useState<"images" | "videos">("images");
 
-    const filteredEmotes = emotes.filter(emote => {
+    const filteredEmotes = (emotes || []).filter(emote => {
         const matchesSearch = emote.prompt?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesType = currentTab === "images" 
             ? !emote.videoUrl 
@@ -71,22 +71,29 @@ export const EmoteSidebar = ({ activeTool, onChangeActiveTool, editor, emotes, s
     };
 
     const handleAddToCanvas = async (emote: Emote) => {
-        if (!editor) return;
+        if (!editor || !editor.stage || !editor.layer) {
+            toast.error('Editor is not ready. Please try again in a moment.');
+            return;
+        }
         
         try {
+            setLoading(true);
+            console.log('Adding emote to canvas:', emote);
+            
             if (emote.videoUrl) {
-                setLoading(true);
+                console.log('Adding video:', emote.videoUrl);
                 await editor.addVideo(emote.videoUrl);
                 toast.success('Video added to canvas');
             } else if (emote.imageUrl) {
-                editor.addEmote(emote.imageUrl);
+                console.log('Adding image:', emote.imageUrl);
+                await editor.addImage(emote.imageUrl);
                 toast.success('Image added to canvas');
             } else {
                 throw new Error('No media URL available');
             }
         } catch (error) {
             console.error('Error adding to canvas:', error);
-            toast.error('Failed to add to canvas');
+            toast.error('Failed to add to canvas. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -99,6 +106,8 @@ export const EmoteSidebar = ({ activeTool, onChangeActiveTool, editor, emotes, s
             ))}
         </div>
     );
+
+    const isEditorReady = editor && editor.stage && editor.layer;
 
     return (
         <aside className={cn("bg-white relative border-r z-[40] w-[300px] h-full flex flex-col", activeTool === "emotes" ? "visible" : "hidden")}>
@@ -152,9 +161,17 @@ export const EmoteSidebar = ({ activeTool, onChangeActiveTool, editor, emotes, s
                                     )}
                                     <button
                                         onClick={() => handleAddToCanvas(emote)}
-                                        className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition bg-black bg-opacity-50 flex items-center justify-center text-white"
+                                        disabled={!isEditorReady || loading}
+                                        className={cn(
+                                            "absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition bg-black bg-opacity-50 flex items-center justify-center text-white",
+                                            (!isEditorReady || loading) ? "cursor-wait" : "cursor-pointer"
+                                        )}
                                     >
-                                        Add to Canvas
+                                        {loading ? (
+                                            <Loader className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            'Add to Canvas'
+                                        )}
                                     </button>
                                     {emote.videoUrl && (
                                         <div className="absolute top-2 right-2">
@@ -168,26 +185,26 @@ export const EmoteSidebar = ({ activeTool, onChangeActiveTool, editor, emotes, s
                 </div>
             </ScrollArea>
             <div className="p-4 flex justify-between items-center">
-    <Button
-        variant="outline"
-        size="icon"
-        onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-        disabled={currentPage === 1}
-    >
-        <ChevronLeft className="h-4 w-4" />
-    </Button>
-    <span className="text-sm font-medium">
-        {currentPage} / {totalPages}
-    </span>
-    <Button
-        variant="outline"
-        size="icon"
-        onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-        disabled={currentPage === totalPages}
-    >
-        <ChevronRight className="h-4 w-4" />
-    </Button>
-</div>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                >
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium">
+                    {currentPage} / {totalPages}
+                </span>
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                >
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+            </div>
             <ToolSidebarClose onClick={onClose} />
         </aside>
     );

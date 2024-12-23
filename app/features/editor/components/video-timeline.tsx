@@ -1,147 +1,213 @@
-import React, { useEffect, useState } from 'react';
-import { Slider } from "@/components/ui/slider";
-import { Button } from "@/components/ui/button";
-import { 
-    Play, 
-    Pause, 
-    SkipBack, 
-    SkipForward,
-} from "lucide-react";
+import React, { useEffect, useState, useRef } from 'react';
 import { cn } from "@/lib/utils";
+import { GripVertical } from "lucide-react";
 
 interface VideoTimelineProps {
-    videoElement: HTMLVideoElement;
-    onTimeUpdate?: (startTime: number, endTime: number) => void;
-    compact?: boolean;
+  videoElement: HTMLVideoElement;
+  startTime: number;
+  endTime: number;
+  duration: number;
+  onStartTimeChange: (time: number) => void;
+  onEndTimeChange: (time: number) => void;
 }
 
-export const VideoTimeline: React.FC<VideoTimelineProps> = ({ 
-    videoElement,
-    onTimeUpdate,
-    compact = false
+export const VideoTimeline: React.FC<VideoTimelineProps> = ({
+  videoElement,
+  startTime,
+  endTime,
+  duration,
+  onStartTimeChange,
+  onEndTimeChange,
 }) => {
-    const [duration, setDuration] = useState(0);
-    const [currentTime, setCurrentTime] = useState(0);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [startTime, setStartTime] = useState(0);
-    const [endTime, setEndTime] = useState(0);
-    
-    useEffect(() => {
-        const handleLoadedMetadata = () => {
-            setDuration(videoElement.duration);
-            setEndTime(videoElement.duration);
-        };
-        
-        const handleTimeUpdate = () => {
-            setCurrentTime(videoElement.currentTime);
-            
-            if (videoElement.currentTime >= endTime) {
-                videoElement.currentTime = startTime;
-            }
-        };
-        
-        videoElement.addEventListener('loadedmetadata', handleLoadedMetadata);
-        videoElement.addEventListener('timeupdate', handleTimeUpdate);
-        
-        return () => {
-            videoElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
-            videoElement.removeEventListener('timeupdate', handleTimeUpdate);
-        };
-    }, [videoElement, endTime, startTime]);
+  const [thumbnails, setThumbnails] = useState<string[]>([]);
+  const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState(false);
+  const [isDragging, setIsDragging] = useState<'start' | 'end' | 'selection' | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const selectionLengthRef = useRef(0);
 
-    const formatTime = (time: number) => {
-        const minutes = Math.floor(time / 60);
-        const seconds = Math.floor(time % 60);
-        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  const MIN_GAP = 0.1; // Minimum 0.1 second gap between start and end
+
+  useEffect(() => {
+    const generateThumbnails = async () => {
+      if (!videoElement || !canvasRef.current || isGeneratingThumbnails) return;
+      setIsGeneratingThumbnails(true);
+
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const thumbnailCount = 10;
+      const newThumbnails: string[] = [];
+
+      canvas.width = videoElement.videoWidth;
+      canvas.height = videoElement.videoHeight;
+
+      for (let i = 0; i < thumbnailCount; i++) {
+        const time = (duration / thumbnailCount) * i;
+        videoElement.currentTime = time;
+
+        await new Promise<void>((resolve) => {
+          videoElement.onseeked = () => resolve();
+        });
+
+        ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+        newThumbnails.push(canvas.toDataURL('image/jpeg', 0.5));
+      }
+
+      videoElement.currentTime = startTime;
+      setThumbnails(newThumbnails);
+      setIsGeneratingThumbnails(false);
     };
 
-    const handlePlayPause = () => {
-        if (isPlaying) {
-            videoElement.pause();
-        } else {
-            videoElement.play();
-            if (videoElement.currentTime < startTime || videoElement.currentTime > endTime) {
-                videoElement.currentTime = startTime;
-            }
-        }
-        setIsPlaying(!isPlaying);
-    };
+    generateThumbnails();
+  }, [videoElement, duration]);
 
-    const handleTrimChange = (values: number[]) => {
-        const [newStartTime, newEndTime] = values;
-        setStartTime(newStartTime);
-        setEndTime(newEndTime);
-        
-        if (videoElement.currentTime < newStartTime || videoElement.currentTime > newEndTime) {
-            videoElement.currentTime = newStartTime;
-        }
-        
-        onTimeUpdate?.(newStartTime, newEndTime);
-    };
+  // Store the selection length when starting to drag the selection
+  useEffect(() => {
+    if (isDragging === 'selection') {
+      selectionLengthRef.current = endTime - startTime;
+    }
+  }, [isDragging, startTime, endTime]);
 
-    return (
-        <div className={cn(
-            "bg-white rounded-lg shadow",
-            compact ? "p-2" : "p-4",
-            "backdrop-blur-lg bg-opacity-90"
-        )}>
-            <div className={cn("space-y-2", compact ? "space-y-1" : "space-y-4")}>
-                <div className="relative">
-                    <Slider
-                        defaultValue={[0, duration]}
-                        value={[startTime, endTime]}
-                        max={duration}
-                        step={0.1}
-                        className={cn("mt-2", compact ? "h-3" : "h-4")}
-                        onValueChange={handleTrimChange}
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>{formatTime(startTime)}</span>
-                        <span>{formatTime(endTime)}</span>
-                    </div>
-                </div>
-                
-                <div className="flex items-center justify-center space-x-2">
-                    <Button
-                        variant="outline"
-                        size={compact ? "sm" : "icon"}
-                        onClick={() => {
-                            videoElement.currentTime = startTime;
-                        }}
-                        className={cn(compact && "h-6 w-6 p-0")}
-                    >
-                        <SkipBack className={cn(compact ? "h-3 w-3" : "h-4 w-4")} />
-                    </Button>
-                    
-                    <Button
-                        variant="outline"
-                        size={compact ? "sm" : "icon"}
-                        onClick={handlePlayPause}
-                        className={cn(compact && "h-6 w-6 p-0")}
-                    >
-                        {isPlaying ? (
-                            <Pause className={cn(compact ? "h-3 w-3" : "h-4 w-4")} />
-                        ) : (
-                            <Play className={cn(compact ? "h-3 w-3" : "h-4 w-4")} />
-                        )}
-                    </Button>
-                    
-                    <Button
-                        variant="outline"
-                        size={compact ? "sm" : "icon"}
-                        onClick={() => {
-                            videoElement.currentTime = endTime;
-                        }}
-                        className={cn(compact && "h-6 w-6 p-0")}
-                    >
-                        <SkipForward className={cn(compact ? "h-3 w-3" : "h-4 w-4")} />
-                    </Button>
-                </div>
-                
-                <div className="text-center text-xs text-gray-500">
-                    {formatTime(currentTime)} / {formatTime(duration)}
-                </div>
-            </div>
+  const handleMouseDown = (handle: 'start' | 'end' | 'selection') => (e: React.MouseEvent) => {
+    setIsDragging(handle);
+    e.preventDefault();
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !timelineRef.current) return;
+
+    const rect = timelineRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const percentage = Math.max(0, Math.min(1, x / rect.width));
+    const newTime = percentage * duration;
+
+    if (isDragging === 'selection') {
+      // When dragging the selection, move both start and end times together
+      const selectionLength = selectionLengthRef.current;
+      const newStartTime = Math.max(0, Math.min(duration - selectionLength, newTime));
+      const newEndTime = newStartTime + selectionLength;
+      
+      if (newEndTime <= duration) {
+        onStartTimeChange(newStartTime);
+        onEndTimeChange(newEndTime);
+      }
+    } else if (isDragging === 'start') {
+      // Ensure start time doesn't go beyond (endTime - MIN_GAP)
+      const maxStartTime = endTime - MIN_GAP;
+      const clampedTime = Math.max(0, Math.min(maxStartTime, newTime));
+      onStartTimeChange(clampedTime);
+    } else {
+      // Ensure end time doesn't go below (startTime + MIN_GAP)
+      const minEndTime = startTime + MIN_GAP;
+      const clampedTime = Math.max(minEndTime, Math.min(duration, newTime));
+      onEndTimeChange(clampedTime);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(null);
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mousemove', handleMouseMove as any);
+    }
+    return () => {
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mousemove', handleMouseMove as any);
+    };
+  }, [isDragging]);
+
+  // Add visual feedback for when handles can't move further
+  const isStartAtLimit = startTime >= endTime - MIN_GAP;
+  const isEndAtLimit = endTime <= startTime + MIN_GAP;
+
+  return (
+    <div className="w-full h-full flex items-center gap-2">
+      <canvas ref={canvasRef} className="hidden" />
+      
+      {/* Thumbnails container */}
+      <div 
+        ref={timelineRef}
+        className="relative h-10 flex-1 rounded-md overflow-hidden bg-black/5"
+      >
+        <div className="absolute inset-0 flex">
+          {thumbnails.map((thumbnail, index) => (
+            <div
+              key={index}
+              className="flex-1 h-full"
+              style={{
+                backgroundImage: `url(${thumbnail})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
+            />
+          ))}
         </div>
-    );
+        
+        {/* Selection overlay */}
+        <div
+          className={cn(
+            "absolute inset-y-0 bg-blue-500/20 cursor-move",
+            isDragging === 'selection' && "bg-blue-500/30"
+          )}
+          style={{
+            left: `${(startTime / duration) * 100}%`,
+            right: `${100 - (endTime / duration) * 100}%`,
+          }}
+          onMouseDown={handleMouseDown('selection')}
+        />
+
+        {/* Start handle */}
+        <div
+          className={cn(
+            "absolute top-0 bottom-0 w-1 cursor-ew-resize group",
+            isDragging === 'start' ? "bg-blue-600" : "bg-blue-500",
+            isStartAtLimit && "bg-red-500"
+          )}
+          style={{ left: `${(startTime / duration) * 100}%` }}
+          onMouseDown={handleMouseDown('start')}
+        >
+          <div className="absolute inset-y-0 -left-2 w-4 flex items-center justify-center">
+            <GripVertical className={cn(
+              "h-4 w-4 text-white drop-shadow",
+              isStartAtLimit && "text-red-100"
+            )} />
+          </div>
+          <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] whitespace-nowrap font-medium">
+            Start: {startTime.toFixed(1)}s
+          </div>
+        </div>
+
+        {/* End handle */}
+        <div
+          className={cn(
+            "absolute top-0 bottom-0 w-1 cursor-ew-resize group",
+            isDragging === 'end' ? "bg-blue-600" : "bg-blue-500",
+            isEndAtLimit && "bg-red-500"
+          )}
+          style={{ left: `${(endTime / duration) * 100}%` }}
+          onMouseDown={handleMouseDown('end')}
+        >
+          <div className="absolute inset-y-0 -left-2 w-4 flex items-center justify-center">
+            <GripVertical className={cn(
+              "h-4 w-4 text-white drop-shadow",
+              isEndAtLimit && "text-red-100"
+            )} />
+          </div>
+          <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] whitespace-nowrap font-medium">
+            End: {endTime.toFixed(1)}s
+          </div>
+        </div>
+
+        {/* Duration indicator */}
+        <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] whitespace-nowrap font-medium text-gray-500">
+          Duration: {(endTime - startTime).toFixed(1)}s
+        </div>
+      </div>
+    </div>
+  );
 }; 

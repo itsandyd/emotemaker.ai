@@ -181,7 +181,7 @@ export default function Landing() {
                 width={800}
               />
               <div className="absolute -bottom-4 -right-4 bg-white p-4 rounded-lg shadow-lg">
-                <p className="font-bold text-[#7928CA]">10,000+ Emotes Created!</p>
+                <p className="font-bold text-[#7928CA]">20,000+ Emotes Created!</p>
               </div>
             </div>
           </div>

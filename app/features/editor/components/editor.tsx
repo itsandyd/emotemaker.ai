@@ -2,54 +2,68 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useEditor } from "../hooks/use-editor"
-
-import { fabric } from "fabric"
 import { Navbar } from "./navbar"
 import { Sidebar } from "./sidebar"
 import { Toolbar } from "./toolbar"
 import { Footer } from "./footer"
-import { ActiveTool, EditorHookProps, selectionDependentTools } from "../types"
+import { ActiveTool, WorkspaceType } from "../types"
 import { ShapeSidebar } from "./shape-sidebar"
-import { Emote, EmoteForSale } from "@prisma/client"
+import { Emote } from "@prisma/client"
 import { FillColorSidebar } from "./fill-color-sidebar"
 import { StrokeColorSidebar } from "./stroke-color-sidebar"
 import { StrokeWidthSidebar } from "./stroke-width-sidebar"
 import { OpacitySidebar } from "./opacity-sidebar"
 import { TextSidebar } from "./text-sidebar"
 import { FontSidebar } from "./font-sidebar"
-import { ImageSidebar } from "./image-sidebar"
 import { EmoteSidebar } from "./emote-sidebar"
-import { useUser } from "@clerk/nextjs"
 import { EmoteGeneratorSidebar } from "./generate-sidebar"
 import { FilterSidebar } from "./filter-sidebar"
 import { DrawSidebar } from "./draw-sidebar"
-import { InpaintSidebar } from "./inpaint-sidebar" // Add this import
-import { EnhanceSidebar } from "./enhance-sidebar"
-import { VideoGeneratorSidebar } from "./video-sidebar"
-import { VideoControls } from './video-controls';
+import { InpaintSidebar } from "./inpaint-sidebar"
+import { VideoSidebar } from "./video-sidebar"
+import { VideoControls } from './video-controls'
+import { DEFAULT_WORKSPACE_CONFIGS } from "../types"
 
 interface EditorProps {
   userId: string;
   emotes: Emote[];
+  initialWorkspaceType?: WorkspaceType;
 }
 
-export const Editor = ({ userId, emotes: initialEmotes }: EditorProps) => {
+export const Editor = ({ 
+  userId, 
+  emotes: initialEmotes,
+  initialWorkspaceType = 'image'
+}: EditorProps) => {
   const [activeTool, setActiveTool] = useState<ActiveTool>("select")
   const [emotes, setEmotes] = useState<Emote[]>(initialEmotes)
   const [currentPrompt, setCurrentPrompt] = useState<string>("")
+  const [isEditorReady, setIsEditorReady] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const onClearSelection = useCallback(() => {
-    if (selectionDependentTools.includes(activeTool)) {
+    if (activeTool !== "draw" && activeTool !== "video-controls") {
       setActiveTool("select")
     }
   }, [activeTool])
 
-  const { init, editor } = useEditor({
+  const { editor, init } = useEditor({
     clearSelectionCallback: onClearSelection
   })
 
+  useEffect(() => {
+    if (containerRef.current) {
+      init(containerRef.current, initialWorkspaceType);
+      setIsEditorReady(true);
+    }
+  }, [init, initialWorkspaceType])
+
+  // Reset editor ready state when workspace type changes
+  useEffect(() => {
+    setIsEditorReady(false);
+  }, [])
+
   const onChangeActiveTool = useCallback((tool: ActiveTool) => {
-    
     if (tool === "draw") {
       editor?.enableDrawingMode()
     }
@@ -62,39 +76,14 @@ export const Editor = ({ userId, emotes: initialEmotes }: EditorProps) => {
       return setActiveTool("select")
     }
 
-    setActiveTool(tool); 
+    setActiveTool(tool)
   }, [activeTool, editor])
-
-  const canvasRef = useRef(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const canvas = new fabric.Canvas(
-      canvasRef.current, 
-      {
-        backgroundColor: '#f0f0f0',
-        width: 500,
-        height: 500,
-        controlsAboveOverlay: true,
-        preserveObjectStacking: true,
-        renderOnAddRemove: true,
-        stateful: true,
-      }
-    )
-
-    init({
-      initialCanvas: canvas,
-      initialContainer: containerRef.current!,
-    }) 
-
-    return () => {
-      canvas.dispose();
-    }
-  }, [init])
 
   const addEmote = useCallback((newEmote: Emote) => {
     setEmotes(prevEmotes => [newEmote, ...prevEmotes])
   }, [])
+
+  const config = DEFAULT_WORKSPACE_CONFIGS[initialWorkspaceType]
 
   return (
     <div className="flex flex-col h-full">
@@ -106,6 +95,7 @@ export const Editor = ({ userId, emotes: initialEmotes }: EditorProps) => {
         <Sidebar 
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
+          workspaceType={initialWorkspaceType}
         />
         <ShapeSidebar 
           editor={editor}
@@ -142,36 +132,25 @@ export const Editor = ({ userId, emotes: initialEmotes }: EditorProps) => {
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-        {/* <ImageSidebar 
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        /> */}
-        {/* <EnhanceSidebar 
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        /> */}
         <EmoteSidebar 
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-          emotes={emotes} // Pass emotes as props
-          setCurrentPrompt={setCurrentPrompt}
-        />
-        {/* <VideoGeneratorSidebar 
           editor={editor}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
           emotes={emotes}
           setCurrentPrompt={setCurrentPrompt}
-        /> */}
+        />
+        <VideoSidebar 
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
         <EmoteGeneratorSidebar 
           editor={editor}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
-          emotes={emotes} // Pass emotes as props
-          // setCurrentPrompt={setCurrentPrompt}
+          emotes={emotes}
+          addEmote={addEmote}
+          currentPrompt={currentPrompt}
         />
         <FilterSidebar 
           editor={editor}
@@ -183,24 +162,34 @@ export const Editor = ({ userId, emotes: initialEmotes }: EditorProps) => {
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-        <InpaintSidebar // Add the InpaintSidebar component
+        <InpaintSidebar
           editor={editor}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 flex flex-col overflow-hidden bg-slate-200">
           <Toolbar 
             editor={editor}
             activeTool={activeTool}
             onChangeActiveTool={onChangeActiveTool}
             addEmote={addEmote}
             currentPrompt={currentPrompt}
-            key={JSON.stringify(editor?.canvas.getActiveObject())}
           />
-          <div className="flex-1 relative bg-muted" ref={containerRef}>
-            <canvas ref={canvasRef} />
-            <div className="absolute inset-0 pointer-events-none">
-                <VideoControls editor={editor} />
+          <div className="flex-1 flex items-center justify-center">
+            <div 
+              className="relative" 
+              ref={containerRef}
+              style={{
+                width: config.width,
+                height: config.height,
+                backgroundColor: config.backgroundColor
+              }}
+            >
+              {editor?.stage && (
+                <div className="absolute inset-0 pointer-events-none">
+                  <VideoControls editor={editor} />
+                </div>
+              )}
             </div>
           </div>
           <Footer />

@@ -1,27 +1,25 @@
 import { cn } from "@/lib/utils"
-import { ActiveTool, Editor, FILL_COLOR } from "../types"
+import { ActiveTool, KonvaEditor, DEFAULT_EDITOR_STATE } from "../types"
 import { ToolSidebarHeader } from "./tool-sidebar-header"
 import { ToolSidebarClose } from "./tool-sidebar-close"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ColorPicker } from "./color-picker"
 
-
 interface FillColorSidebarProps {
     activeTool: ActiveTool;
     onChangeActiveTool: (tool: ActiveTool) => void;
-    editor: Editor | undefined;
+    editor: KonvaEditor | undefined;
 }
 
 export const FillColorSidebar = ({ activeTool, onChangeActiveTool, editor }: FillColorSidebarProps) => {
-
-    const value = editor?.getActiveFillColor() || FILL_COLOR;
+    const value = editor?.selectedNode?.attrs?.fill || DEFAULT_EDITOR_STATE.fillColor;
 
     const onClose = () => {
         onChangeActiveTool("select")
     }
 
     const onChange = (value: string) => {
-        editor?.changeFillColor(value)
+        editor?.setFillColor(value)
     }
 
     return (
