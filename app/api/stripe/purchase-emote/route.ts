@@ -3,6 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
 
+export const dynamic = 'force-dynamic';
+
 const MINIMUM_PRICE = 100; // $1.00 in cents
 const CONNECT_FEE_PERCENTAGE = 0.0025; // 0.25% for Stripe Connect
 const CONNECT_FIXED_FEE = 25; // $0.25 for Stripe Connect
