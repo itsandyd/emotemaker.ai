@@ -96,6 +96,7 @@ export const Editor = ({
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
           workspaceType={initialWorkspaceType}
+          editor={editor}
         />
         <ShapeSidebar 
           editor={editor}
@@ -143,6 +144,8 @@ export const Editor = ({
           editor={editor}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
+          emotes={emotes}
+          setCurrentPrompt={setCurrentPrompt}
         />
         <EmoteGeneratorSidebar 
           editor={editor}

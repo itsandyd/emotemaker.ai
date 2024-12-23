@@ -8,11 +8,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { ToolSidebarHeader } from "./tool-sidebar-header";
 import { ToolSidebarClose } from "./tool-sidebar-close";
+import { Emote } from "@prisma/client";
 
 interface VideoSidebarProps {
   editor: KonvaEditor | undefined;
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
+  emotes: Emote[];
+  setCurrentPrompt: (prompt: string) => void;
 }
 
 export const VideoSidebar = ({

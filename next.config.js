@@ -1,5 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push({
+        canvas: "commonjs canvas",
+      });
+    }
+    return config;
+  },
   images: {
     unoptimized: true,
     domains: [

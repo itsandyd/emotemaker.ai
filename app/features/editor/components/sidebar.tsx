@@ -5,17 +5,20 @@ import { ActiveTool, WorkspaceType } from "../types";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/hint";
 import { cn } from "@/lib/utils";
+import { KonvaEditor } from "../types";
 
 interface SidebarProps {
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
   workspaceType: WorkspaceType;
+  editor: KonvaEditor | undefined;
 }
 
 export const Sidebar = ({ 
   activeTool,
   onChangeActiveTool,
-  workspaceType
+  workspaceType,
+  editor
 }: SidebarProps) => {
   return (
     <aside className="bg-white relative border-r z-[50] w-[52px] flex flex-col items-center gap-y-4 p-2">
