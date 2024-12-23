@@ -58,14 +58,7 @@ import Image from "next/image";
 import { Emote, EmoteForSale } from "@prisma/client";
 import { saveAs } from "file-saver";
 
-import html2canvas from 'html2canvas';
-
-// import  saveAs  from 'file-saver';
-
-// import { jsPDF } from "jspdf"
-
 import axios from "axios";
-
 
 const MAX_LAYERS = 5;
 

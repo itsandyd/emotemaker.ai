@@ -4,14 +4,5 @@
         "path": "/api/cron/discord-post",
         "schedule": "*/30 * * * *"
       }
-    ],
-    "builds": [
-      {
-        "src": "package.json",
-        "use": "@vercel/next",
-        "config": {
-          "installCommand": "apt-get update && apt-get install -y zlib1g-dev && npm install"
-        }
-      }
     ]
   }
