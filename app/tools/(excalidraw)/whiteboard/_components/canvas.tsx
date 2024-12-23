@@ -59,6 +59,7 @@ import { Emote, EmoteForSale } from "@prisma/client";
 import { saveAs } from "file-saver";
 
 import axios from "axios";
+import { toPng } from 'html-to-image';
 
 const MAX_LAYERS = 5;
 
@@ -582,63 +583,30 @@ const [canvasState, setCanvasState] = useState<CanvasState>({
 
   const handleDownloadPng = async () => {
     clearSelection();
-  
+
     const svgElement = document.querySelector('#canvas-svg');
     if (!svgElement) {
       console.error("SVG element not found!");
       return;
     }
-  
-    svgElement.setAttribute('viewBox', '0 0 500 500');
-    svgElement.setAttribute('width', '500px');
-    svgElement.setAttribute('height', '500px');
-  
-    const svgClone = svgElement.cloneNode(true) as SVGSVGElement;
-    svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  
-    const unnecessaryElements = svgClone.querySelectorAll('.selection-box, .cursors-presence, rect');
-    unnecessaryElements.forEach(el => el.remove());
-  
-    const imageElement = svgClone.querySelector('image');
-    if (imageElement) {
-      const imageUrl = imageElement.getAttribute('href');
-      if (!imageUrl) {
-        console.error("Image element does not have an href attribute");
-        return;
-      }
-  
-      const img = new window.Image();
-      img.crossOrigin = 'Anonymous';
-  
-      img.onload = async () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 500;
-        canvas.height = 500;
-  
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0, 500, 500);
-  
-          canvas.toBlob((blob) => {
-            if (blob) {
-              saveAs(blob, 'canvas.png');
-            } else {
-              console.error('Failed to create Blob from canvas.');
-            }
-          });
-        } else {
-          console.error('Failed to get canvas context.');
+
+    try {
+      const dataUrl = await toPng(svgElement as HTMLElement, {
+        width: 500,
+        height: 500,
+        pixelRatio: 2,
+        skipAutoScale: true,
+        style: {
+          transform: 'none'
         }
-      };
-  
-      img.onerror = (error) => {
-        console.error('Error loading image:', error);
-      };
-  
-      img.src = imageUrl;
-    } else {
-      console.error("Image element not found in SVG");
+      });
+
+      const link = document.createElement('a');
+      link.download = 'canvas.png';
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error('Error generating PNG:', error);
     }
   };
   
