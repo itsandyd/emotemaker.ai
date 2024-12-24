@@ -14,10 +14,31 @@ const nextConfig = {
     if (isServer) {
       config.externals.push({
         canvas: "commonjs canvas",
+        "canvas-prebuilt": "commonjs canvas-prebuilt",
       });
     }
 
+    // Add node-loader for .node files
+    config.module.rules.push({
+      test: /\.node$/,
+      use: "node-loader",
+    });
+
+    // Add canvas loader
+    config.module.rules.push({
+      test: /\.(node|canvas)$/,
+      use: {
+        loader: "node-loader",
+        options: {
+          name: "[name].[ext]",
+        },
+      },
+    });
+
     return config;
+  },
+  experimental: {
+    serverComponentsExternalPackages: ["canvas"],
   },
 };
 
