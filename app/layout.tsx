@@ -12,7 +12,6 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import Script from 'next/script'
 
 import { getUser } from '@/actions/get-user'
-import { Providers } from '@/components/providers'
 import { getUserCredits } from '@/actions/get-user-credits'
 import { Analytics } from "@vercel/analytics/react"
 
@@ -105,7 +104,6 @@ export default async function RootLayout({
             <ToasterProvider />
             <TooltipProvider>
               <ModalProvider />
-              <Providers>
               {children}
               <Analytics />
               <Script async src="//cdn.trackdesk.com/tracking.js" />
@@ -122,7 +120,6 @@ export default async function RootLayout({
               <Script id="rewardful-queue">
                 {`(function(w,r){w._rwq=r;w[r]=w[r]||function(){(w[r].q=w[r].q||[]).push(arguments)}})(window,'rewardful');`}
               </Script>
-              </Providers>
             </TooltipProvider>
         </body>
       </html>

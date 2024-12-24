@@ -60,6 +60,7 @@
     "autoprefixer": "10.4.16",
     "aws-sdk": "^2.1621.0",
     "axios": "^1.5.1",
+    "canvas": "^2.11.2",
     "class-variance-authority": "^0.7.0",
     "cloudinary": "^2.2.0",
     "clsx": "^2.1.0",
@@ -68,10 +69,10 @@
     "convex-helpers": "^0.1.43",
     "date-fns": "^3.6.0",
     "discord.js": "^14.16.2",
+    "dom-to-image-more": "^3.2.0",
     "embla-carousel-react": "^8.0.1",
     "eslint": "8.51.0",
     "eslint-config-next": "13.5.5",
-    "fabric": "^5.3.0-browser",
     "file-saver": "^2.0.5",
     "form-data": "^4.0.0",
     "framer-motion": "^10.18.0",
@@ -133,12 +134,10 @@
     "y-monaco": "^0.1.5",
     "y-protocols": "^1.0.6",
     "zod": "^3.23.8",
-    "zustand": "^4.4.6",
-    "dom-to-image-more": "^3.2.0"
+    "zustand": "^4.4.6"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.15",
-    "@types/fabric": "^5.3.0",
     "@types/file-saver": "^2.0.7",
     "@types/material-colors": "^1.2.3",
     "@types/node": "^22.5.5",

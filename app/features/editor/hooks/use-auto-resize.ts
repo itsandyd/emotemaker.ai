@@ -1,76 +1,62 @@
-import { useCallback, useEffect, useState } from "react";
-import { fabric } from "fabric";
+import { useCallback, useEffect } from "react";
+import Konva from "konva";
 
 interface UseAutoResizeProps {
-    canvas: fabric.Canvas | null;
+    stage: Konva.Stage | null;
     container: HTMLDivElement | null;
 }
 
-export const useAutoResize = ({ canvas, container }: UseAutoResizeProps) => {
-
+export const useAutoResize = ({ stage, container }: UseAutoResizeProps) => {
     const autoZoom = useCallback(() => {
-        if (!canvas || !container) return;
+        if (!stage || !container) return;
 
         const width = container.offsetWidth;
         const height = container.offsetHeight;
 
-        canvas.setWidth(width);
-        canvas.setHeight(height);
+        // Update stage size
+        stage.width(width);
+        stage.height(height);
 
-        const center = canvas.getCenter();
-        
-        const zoomRatio = 0.85;
+        // Find the workspace layer (assuming it's the first layer)
+        const layer = stage.findOne<Konva.Layer>('.workspace-layer');
+        if (!layer) return;
 
-        const localWorkspace = canvas
-            .getObjects()
-            .find((object) => object.name === "clip")
+        // Find the clip/workspace shape
+        const workspace = layer.findOne<Konva.Shape>('.clip');
+        if (!workspace) return;
 
-        // @ts-ignore
-        const scale = fabric.util.findScaleToFit(localWorkspace, {
-            width: width,
-            height: height,
-        });
+        // Calculate scale to fit
+        const scaleX = width / workspace.width();
+        const scaleY = height / workspace.height();
+        const scale = Math.min(scaleX, scaleY) * 0.85; // 0.85 is the zoom ratio
 
-        const zoom = zoomRatio * scale;
+        // Get workspace dimensions
+        const workspaceWidth = workspace.width() * scale;
+        const workspaceHeight = workspace.height() * scale;
 
-        canvas.setViewportTransform(fabric.iMatrix.concat())
-        canvas.zoomToPoint(new fabric.Point(
-            center.left,
-            center.top
-        ), zoom);
+        // Center the workspace
+        const x = (width - workspaceWidth) / 2;
+        const y = (height - workspaceHeight) / 2;
 
-        if (!localWorkspace) return;
+        // Reset and apply new transform
+        layer.scale({ x: scale, y: scale });
+        layer.position({ x, y });
+        layer.batchDraw();
 
-        const workspaceCenter = localWorkspace.getCenterPoint();
-        const viewportTransform = canvas.viewportTransform;
-
-        if (
-            canvas.width === undefined ||
-            canvas.height === undefined || 
-            !viewportTransform
-        ) {
-            return;
+        // Update clip path if needed
+        const clipLayer = stage.findOne<Konva.Layer>('.clip-layer');
+        if (clipLayer) {
+            clipLayer.scale({ x: scale, y: scale });
+            clipLayer.position({ x, y });
+            clipLayer.batchDraw();
         }
 
-        viewportTransform[4] = canvas.width / 2 - workspaceCenter.x *
-        viewportTransform[0];
-
-        viewportTransform[5] = canvas.height / 2 - workspaceCenter.y *
-        viewportTransform[3];
-
-        canvas.setViewportTransform(viewportTransform);
-
-        localWorkspace.clone((cloned: fabric.Rect) => {
-            canvas.clipPath = cloned;
-            canvas.requestRenderAll();
-        })
-
-    }, [canvas, container]);
+    }, [stage, container]);
 
     useEffect(() => {
         let resizeObserver: ResizeObserver | null = null;
 
-        if (canvas && container) { 
+        if (stage && container) { 
             resizeObserver = new ResizeObserver(() => {
                 autoZoom();
             });
@@ -83,5 +69,5 @@ export const useAutoResize = ({ canvas, container }: UseAutoResizeProps) => {
             }
         };
 
-    }, [canvas, container, autoZoom]);
+    }, [stage, container, autoZoom]);
 };

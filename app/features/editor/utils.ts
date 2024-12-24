@@ -1,6 +1,6 @@
 import { RGBColor } from "react-color"
-import { fabric } from "fabric"
 import { uuid } from "uuidv4"
+import Konva from 'konva'
 
 export function downloadFile(file: string, type: string) {
     const anchorElement = document.createElement("a");
@@ -13,7 +13,7 @@ export function downloadFile(file: string, type: string) {
 }
 
 export function isTextType (type: string | undefined) {
-    return type === "text" || type === "textbox" || type === "i-text"
+    return type === "text" || type === "textbox"
 }
 
 export function rgbaObjectToString(rgba: RGBColor | "transparent") {
@@ -30,97 +30,60 @@ export const createFilter = (value: string) => {
     let effect;
 
     switch (value) {
-        case "polaroid":
-            // @ts-ignore
-            effect = new fabric.Image.filters.Polaroid();
-            break;
-        case "sepia":
-            effect = new fabric.Image.filters.Sepia();
-            break;
-        case "kodachrome":
-            // @ts-ignore
-            effect = new fabric.Image.filters.Kodachrome();
-            break;
-        case "contrast":
-            effect = new fabric.Image.filters.Contrast({ contrast: 0.3 });
+        case "blur":
+            effect = Konva.Filters.Blur;
             break;
         case "brightness":
-            effect = new fabric.Image.filters.Brightness({ brightness: 0.8 });
+            effect = Konva.Filters.Brighten;
             break;
-        case "brownie":
-            // @ts-ignore
-            effect = new fabric.Image.filters.Brownie();
-            break;
-        case "vintage":
-            // @ts-ignore
-            effect = new fabric.Image.filters.Vintage();
-            break;
-        case "technicolor":
-            // @ts-ignore
-            effect = new fabric.Image.filters.Technicolor();
+        case "contrast":
+            effect = Konva.Filters.Contrast;
             break;
         case "pixelate":
-            effect = new fabric.Image.filters.Pixelate();
+            effect = Konva.Filters.Pixelate;
+            break;
+        case "noise":
+            effect = Konva.Filters.Noise;
             break;
         case "invert":
-            effect = new fabric.Image.filters.Invert();
+            effect = Konva.Filters.Invert;
             break;
-        case "blur":
-            effect = new fabric.Image.filters.Blur();
+        case "sepia":
+            effect = Konva.Filters.Sepia;
             break;
-        case "sharpen":
-            effect = new fabric.Image.filters.Convolute({
-                matrix: [0, -1, 0, -1, 5, -1, 0, -1, 0]
-            });
+        case "grayscale":
+            effect = Konva.Filters.Grayscale;
+            break;
+        case "threshold":
+            effect = Konva.Filters.Threshold;
+            break;
+        case "rgb":
+            effect = Konva.Filters.RGB;
+            break;
+        case "hsv":
+            effect = Konva.Filters.HSV;
+            break;
+        case "hsv":
+            effect = Konva.Filters.HSL;
             break;
         case "emboss":
-            effect = new fabric.Image.filters.Convolute({
-                matrix: [1, 1, 1,1, 0.7, -1, -1, -1, -1]
-            });
+            effect = Konva.Filters.Emboss;
             break;
-        case "removecolor":
-            // @ts-ignore
-            effect = new fabric.Image.filters.RemoveColor({
-                threshold: 0.2,
-                distance: 0.5
-            });
+        case "enhance":
+            effect = Konva.Filters.Enhance;
             break;
-        case "blacknwhite":
-            // @ts-ignore
-            effect = new fabric.Image.filters.BlackWhite();
+        case "posterize":
+            effect = Konva.Filters.Posterize;
             break;
-        case "vibrance":
-            // @ts-ignore
-            effect = new fabric.Image.filters.Vibrance({
-                vibrance: 1,
-            });
-            break;
-        case "blendcolor":
-            effect = new fabric.Image.filters.BlendColor({
-                color: "#00ff00",
-                mode: "multiply"
-            });
-            break;
-        case "huerotate":
-            effect = new fabric.Image.filters.HueRotation({
-                rotation: 0.5
-            });
-            break;
-        case "resize":
-            effect = new fabric.Image.filters.Resize();
-            break;
-        case "gamma":
-            // @ts-ignore
-            effect = new fabric.Image.filters.Gamma({
-                gamma: [1, 0.5, 2.1]
-            });
+        case "kaleidoscope":
+            effect = Konva.Filters.Kaleidoscope;
             break;
         default: 
             effect = null;
-            return;
+            break;
     }
 
-    return effect
+    return effect;
 }
 
 export const generateThemedEmotePrompt = (prompt: string, theme: string) => {
@@ -173,7 +136,6 @@ export const generateThemedEmotePrompt = (prompt: string, theme: string) => {
             additionalDetails = 'The emote should have a whimsical, hand-drawn quality with soft edges and a slightly muted color palette.';
             break;
         default:
-            // Provide a generic description if the theme is not recognized
             styleDescription = 'with a unique style';
             additionalDetails = 'The design should be visually appealing and recognizable at a small scale.';
     }

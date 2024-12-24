@@ -10,8 +10,13 @@ const nextConfig = {
       "files.stripe.com",
     ],
   },
-  webpack: (config) => {
-    config.externals = [...config.externals, { canvas: "canvas" }];
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push({
+        canvas: "commonjs canvas",
+      });
+    }
+
     return config;
   },
 };
