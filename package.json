@@ -14,7 +14,6 @@
     "@aws-sdk/s3-request-presigner": "^3.658.1",
     "@clerk/nextjs": "5.1.2",
     "@clerk/themes": "^2.1.10",
-    "@excalidraw/excalidraw": "^0.17.6",
     "@fal-ai/serverless-client": "^0.10.0",
     "@fal-ai/serverless-proxy": "^0.7.4",
     "@hono/zod-validator": "^0.2.2",
@@ -82,7 +81,6 @@
     "framer-motion": "^10.18.0",
     "fs": "^0.0.1-security",
     "hono": "^4.5.3",
-    "html-to-image": "^1.11.11",
     "input-otp": "^1.2.4",
     "instagram-web-api": "^2.2.2",
     "jimp": "^0.22.12",
@@ -140,7 +138,8 @@
     "y-protocols": "^1.0.6",
     "zlib-sync": "^0.1.9",
     "zod": "^3.23.8",
-    "zustand": "^4.4.6"
+    "zustand": "^4.4.6",
+    "dom-to-image-more": "^3.2.0"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.15",
