@@ -15,7 +15,7 @@
     "@aws-sdk/s3-request-presigner": "^3.658.1",
     "@clerk/nextjs": "5.1.2",
     "@clerk/themes": "^2.1.10",
-    "@fal-ai/serverless-client": "^0.10.0",
+    "@fal-ai/client": "^1.2.1",
     "@fal-ai/serverless-proxy": "^0.7.4",
     "@hono/zod-validator": "^0.2.2",
     "@hookform/resolvers": "^3.3.2",
@@ -23,7 +23,7 @@
     "@monaco-editor/react": "^4.6.0",
     "@planetscale/database": "^1.18.0",
     "@prisma/adapter-planetscale": "^5.14.0",
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^6.1.0",
     "@radix-ui/react-accordion": "^1.1.2",
     "@radix-ui/react-alert-dialog": "^1.0.5",
     "@radix-ui/react-aspect-ratio": "^1.0.3",
@@ -148,9 +148,9 @@
     "@types/react-color": "^3.0.12",
     "@types/react-dom": "^18.3.0",
     "@types/uuid": "^9.0.8",
-    "prisma": "^5.22.0",
+    "node-loader": "^2.0.0",
+    "prisma": "^6.1.0",
     "raw-loader": "^4.0.2",
-    "ts-node": "^10.9.2",
-    "node-loader": "^2.0.0"
+    "ts-node": "^10.9.2"
   }
 }

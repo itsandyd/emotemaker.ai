@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import * as fal from "@fal-ai/serverless-client";
+import { fal} from "@fal-ai/client";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
     const input = {
       image_url,
-      upscaling_factor: parseInt(upscaling_factor) || 4,
+      upscaling_factor: upscaling_factor?.toString() || "4",
       overlapping_tiles: overlapping_tiles === "true",
       checkpoint: checkpoint || "v2",
     };

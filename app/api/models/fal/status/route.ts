@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import * as fal from "@fal-ai/serverless-client";
+import { fal } from "@fal-ai/client";
 import { NextResponse } from "next/server";
 
 fal.config({

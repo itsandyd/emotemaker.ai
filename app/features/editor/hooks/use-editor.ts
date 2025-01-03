@@ -19,7 +19,11 @@ const loadImage = (url: string): Promise<HTMLImageElement> => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
-    img.onerror = reject;
+    img.onerror = (error) => {
+      console.error('Error loading image:', error);
+      reject(new Error('Failed to load image'));
+    };
+    // The URL should already be proxied at this point
     img.src = url;
   });
 };
@@ -123,7 +127,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       }
 
       // Only update selection if clicking on a selectable object
-      if (target instanceof Konva.Group || target instanceof Konva.Shape) {
+      if (target instanceof Konva.Group || target instanceof Konva.Shape || target instanceof Konva.Image) {
         setSelectedNode(target);
         if (transformer.current) {
           (transformer.current as any).nodes([target]);
@@ -656,19 +660,29 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       }
 
       try {
-        const imageUrl = (selectedNode.image() as HTMLImageElement).src;
+        const imageElement = selectedNode.image() as HTMLImageElement;
+        const imageUrl = imageElement.src;
+        console.log('Removing background from:', imageUrl);
+        
+        // Get the original URL if it's proxied
+        let originalUrl = imageUrl;
+        if (imageUrl.includes('/api/proxy-image?url=')) {
+          originalUrl = decodeURIComponent(imageUrl.split('/api/proxy-image?url=')[1]);
+        }
+        
         const response = await axios.post('/api/fal/birefnet-bg-remove', {
-          image: imageUrl
+          image: originalUrl
         });
 
-        if (response.status !== 200) {
+        if (response.status !== 200 || !response.data?.image?.url) {
           throw new Error('Failed to remove background');
         }
 
-        const newImageUrl = response.data.image.url;
-        await editor.addImage(newImageUrl);
+        console.log('Background removed, new image:', response.data.image.url);
+        await editor.addGeneratedEmote(response.data.image.url);
         selectedNode.destroy();
         layer?.batchDraw();
+        toast.success('Background removed successfully');
       } catch (error) {
         console.error('Error removing background:', error);
         toast.error('Failed to remove background');
@@ -839,17 +853,42 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
 
     addGeneratedEmote: async (url: string) => {
       if (!stage || !layer) return Promise.reject("Editor not initialized");
-      const image = await loadImage(url);
-      const imageNode = new Konva.Image({
-        image,
-        draggable: true,
-        x: stage.width() / 2 - image.width / 2,
-        y: stage.height() / 2 - image.height / 2,
-      });
-      layer.add(imageNode);
-      layer.batchDraw();
-      saveToHistory();
-      return Promise.resolve();
+      
+      try {
+        console.log('Loading generated emote:', url);
+        const image = await loadImage(url);
+        
+        // Calculate scale to fit the image within the stage while maintaining aspect ratio
+        const scale = Math.min(
+          (stage.width() * 0.8) / image.width,
+          (stage.height() * 0.8) / image.height
+        );
+
+        const imageNode = new Konva.Image({
+          image,
+          draggable: true,
+          // Center the image on the stage
+          x: (stage.width() - image.width * scale) / 2,
+          y: (stage.height() - image.height * scale) / 2,
+          scaleX: scale,
+          scaleY: scale,
+        });
+
+        layer.add(imageNode);
+        layer.batchDraw();
+        saveToHistory();
+
+        // Select the newly added image
+        setSelectedNode(imageNode);
+        if (transformer.current) {
+          (transformer.current as any).nodes([imageNode]);
+        }
+
+        return Promise.resolve();
+      } catch (error) {
+        console.error('Error adding generated emote:', error);
+        return Promise.reject(error);
+      }
     },
 
     // Add these methods to the editor object
@@ -995,6 +1034,15 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
         console.error('Error during video download:', error);
         toast.error('Failed to download video: ' + (error instanceof Error ? error.message : 'Unknown error'));
       }
+    },
+
+    getTrimmedVideoUrl: async () => {
+      if (!selectedNode || !editor.isVideoObject(selectedNode)) {
+        throw new Error('No video selected');
+      }
+
+      const video = selectedNode.getVideoElement();
+      return video.src;
     },
   }), [stage, layer, selectedNode, editorState, init, saveToHistory]);
 

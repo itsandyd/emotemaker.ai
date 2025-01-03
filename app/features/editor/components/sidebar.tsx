@@ -23,7 +23,7 @@ export const Sidebar = ({
   return (
     <aside className="bg-white relative border-r z-[50] w-[52px] flex flex-col items-center gap-y-4 p-2">
       <div className="flex flex-col items-center gap-y-4">
-        <Hint label="Select" side="right" sideOffset={10}>
+        {/* <Hint label="Select" side="right" sideOffset={10}>
           <Button
             size="icon"
             variant="ghost"
@@ -32,8 +32,28 @@ export const Sidebar = ({
           >
             <MousePointer2 className="size-5" />
           </Button>
+        </Hint> */}
+              <Hint label="Emotes" side="right" sideOffset={10}>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => onChangeActiveTool("emotes")}
+            className={cn(activeTool === "emotes" && "bg-gray-100")}
+          >
+            <Smile className="size-5" />
+          </Button>
         </Hint>
-        <Hint label="Draw" side="right" sideOffset={10}>
+        <Hint label="Generate" side="right" sideOffset={10}>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => onChangeActiveTool("emote-generator")}
+            className={cn(activeTool === "emote-generator" && "bg-gray-100")}
+          >
+            <Wand2 className="size-5" />
+          </Button>
+        </Hint>
+        {/* <Hint label="Draw" side="right" sideOffset={10}>
           <Button
             size="icon"
             variant="ghost"
@@ -42,8 +62,8 @@ export const Sidebar = ({
           >
             <Pencil className="size-5" />
           </Button>
-        </Hint>
-        <Hint label="Eraser" side="right" sideOffset={10}>
+        </Hint> */}
+        {/* <Hint label="Eraser" side="right" sideOffset={10}>
           <Button
             size="icon"
             variant="ghost"
@@ -52,7 +72,7 @@ export const Sidebar = ({
           >
             <Eraser className="size-5" />
           </Button>
-        </Hint>
+        </Hint> */}
         <Hint label="Text" side="right" sideOffset={10}>
           <Button
             size="icon"
@@ -71,26 +91,6 @@ export const Sidebar = ({
             className={cn(activeTool === "shapes" && "bg-gray-100")}
           >
             <Square className="size-5" />
-          </Button>
-        </Hint>
-        <Hint label="Emotes" side="right" sideOffset={10}>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => onChangeActiveTool("emotes")}
-            className={cn(activeTool === "emotes" && "bg-gray-100")}
-          >
-            <Smile className="size-5" />
-          </Button>
-        </Hint>
-        <Hint label="Generate" side="right" sideOffset={10}>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => onChangeActiveTool("emote-generator")}
-            className={cn(activeTool === "emote-generator" && "bg-gray-100")}
-          >
-            <Wand2 className="size-5" />
           </Button>
         </Hint>
         <Hint label="Filter" side="right" sideOffset={10}>

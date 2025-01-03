@@ -8,6 +8,8 @@ const nextConfig = {
       "img.clerk.com",
       "subdomain",
       "files.stripe.com",
+      "oaidalleapiprodscus.blob.core.windows.net",
+      "pprcanvas.s3.amazonaws.com",
     ],
   },
   webpack: (config, { isServer }) => {

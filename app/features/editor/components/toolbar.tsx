@@ -55,7 +55,7 @@ export const Toolbar = ({ editor, activeTool, onChangeActiveTool, addEmote, curr
             setStartTime(editor.getVideoStartTime());
             setEndTime(editor.getVideoEndTime());
         }
-    }, [editor?.selectedNode]);
+    }, [editor?.selectedNode, editor]);
 
     if (!selectedNode) {
         return (
@@ -285,7 +285,34 @@ export const Toolbar = ({ editor, activeTool, onChangeActiveTool, addEmote, curr
                                 if (!userId) {
                                     throw new Error('User is not authenticated');
                                 }
-                                const savedEmote = await editor.saveEmote(currentPrompt, userId);
+
+                                let savedEmote;
+                                if (isVideo && editor.selectedNode && editor.isVideoObject(editor.selectedNode)) {
+                                    // Download the trimmed video first
+                                    await editor.downloadTrimmedVideo();
+                                    // For now, we'll use the original video URL
+                                    const videoUrl = editor.selectedNode.getVideoElement().src;
+                                    if (!videoUrl) {
+                                        throw new Error('Failed to get video URL');
+                                    }
+                                    // Save the video as an emote with isVideo flag
+                                    const response = await fetch('/api/saveemote', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                            prompt: currentPrompt,
+                                            imageUrl: videoUrl,
+                                            isVideo: true,
+                                        }),
+                                    });
+                                    savedEmote = await response.json();
+                                } else {
+                                    // For regular emotes, use the existing saveEmote method
+                                    savedEmote = await editor.saveEmote(currentPrompt, userId);
+                                }
+
                                 if (savedEmote) {
                                     addEmote(savedEmote);
                                     toast.success('Emote saved successfully');

@@ -136,50 +136,227 @@ export const videoGeneration: VideoGeneration = {
 };
 
 export interface GenerationModel {
-  id: string;
   name: string;
   description: string;
   apiRoute: string;
+  options: readonly (
+    | {
+        name: string;
+        type: "select";
+        values: readonly string[];
+        default: string;
+      }
+    | {
+        name: string;
+        type: "number";
+        min: number;
+        max: number;
+        step: number;
+        default: number;
+      }
+    | {
+        name: string;
+        type: "boolean";
+        default: boolean;
+      }
+  )[];
 }
 
 export interface Generation {
-  models: GenerationModel[];
+  models: readonly GenerationModel[];
 }
+
+export type EmoteStyle = 
+  | "kawaii"
+  | "pixel"
+  | "chibi"
+  | "anime"
+  | "object"
+  | "cute-bold-line"
+  | "text-based"
+  | "3d-based"
+  | "pepe-based"
+  | "sticker-based"
+  | "meme"
+  | "ghibli"
+  | "minimalistic"
+  | "superdeformed";
 
 export const generation: Generation = {
   models: [
     {
-      id: 'dalle3',
-      name: 'DALL-E 3',
-      description: 'Latest DALL-E model with high quality and accuracy',
-      apiRoute: '/api/models/dalle3'
+      name: "DALL-E 3",
+      description: "Latest DALL-E model with high quality and accuracy",
+      apiRoute: "/api/models/dalle",
+      options: [
+        {
+          name: "quality",
+          type: "select",
+          values: ["standard", "hd"],
+          default: "standard"
+        },
+        {
+          name: "size",
+          type: "select",
+          values: ["1024x1024", "1024x1792", "1792x1024"],
+          default: "1024x1024"
+        }
+      ] as const
     },
     {
-      id: 'dalle2',
-      name: 'DALL-E 2',
-      description: 'Previous generation DALL-E model',
-      apiRoute: '/api/models/dalle2'
+      name: "Flux Pro",
+      description: "Professional high-quality image generation",
+      apiRoute: "/api/models/fal/fluxpro",
+      options: [
+        {
+          name: "image_size",
+          type: "select",
+          values: ["square_hd"],
+          default: "square_hd"
+        },
+        {
+          name: "num_inference_steps",
+          type: "number",
+          min: 1,
+          max: 50,
+          step: 1,
+          default: 28
+        },
+        {
+          name: "guidance_scale",
+          type: "number",
+          min: 1,
+          max: 20,
+          step: 0.1,
+          default: 3.5
+        },
+        {
+          name: "enable_safety_checker",
+          type: "boolean",
+          default: true
+        }
+      ] as const
     },
     {
-      id: 'sdxl',
-      name: 'Stable Diffusion XL',
-      description: 'Latest Stable Diffusion model',
-      apiRoute: '/api/models/sdxl'
+      name: "Aura Flow",
+      description: "Artistic style transfer and generation",
+      apiRoute: "/api/models/fal/auraflow",
+      options: [
+        {
+          name: "num_inference_steps",
+          type: "number",
+          min: 1,
+          max: 100,
+          step: 1,
+          default: 50
+        },
+        {
+          name: "guidance_scale",
+          type: "number",
+          min: 1,
+          max: 20,
+          step: 0.1,
+          default: 3.5
+        },
+        {
+          name: "num_images",
+          type: "number",
+          min: 1,
+          max: 4,
+          step: 1,
+          default: 1
+        }
+      ] as const
     },
     {
-      id: 'kandinsky',
-      name: 'Kandinsky',
-      description: 'Kandinsky image generation model',
-      apiRoute: '/api/models/kandinsky'
-    },
-    {
-      id: 'img2img',
-      name: 'Image to Image',
-      description: 'Transform existing images',
-      apiRoute: '/api/models/img2img'
+      name: "Flux Schnell",
+      description: "Fast and efficient image generation",
+      apiRoute: "/api/models/fal/fluxschnell",
+      options: [
+        {
+          name: "image_size",
+          type: "select",
+          values: ["square_hd"],
+          default: "square_hd"
+        },
+        {
+          name: "num_images",
+          type: "number",
+          min: 1,
+          max: 4,
+          step: 1,
+          default: 1
+        },
+        {
+          name: "enable_safety_checker",
+          type: "boolean",
+          default: true
+        }
+      ] as const
     }
-  ]
-};
+  ] as const
+} as const;
+
+export const emoteStyles = {
+  kawaii: {
+    name: "Kawaii",
+    description: "Cute Japanese art style",
+    options: [
+      {
+        name: "style_strength",
+        type: "number",
+        min: 0,
+        max: 1,
+        step: 0.1,
+        default: 0.8
+      },
+      {
+        name: "color_palette",
+        type: "select",
+        values: ["pastel", "vibrant", "soft"],
+        default: "pastel"
+      }
+    ] as const
+  },
+  pixel: {
+    name: "Pixel Art",
+    description: "Retro pixel art style",
+    options: [
+      {
+        name: "resolution",
+        type: "select",
+        values: ["32x32", "64x64", "128x128"],
+        default: "64x64"
+      },
+      {
+        name: "palette",
+        type: "select",
+        values: ["gameboy", "nes", "modern"],
+        default: "modern"
+      }
+    ] as const
+  },
+  chibi: {
+    name: "Chibi",
+    description: "Super-deformed chibi art style",
+    options: [
+      {
+        name: "head_size",
+        type: "number",
+        min: 1,
+        max: 3,
+        step: 0.1,
+        default: 2
+      },
+      {
+        name: "style",
+        type: "select",
+        values: ["cute", "cool", "funny"],
+        default: "cute"
+      }
+    ] as const
+  }
+} as const;
 
 export interface KonvaEditor {
   stage: Konva.Stage | null;
@@ -243,6 +420,7 @@ export interface KonvaEditor {
   getVideoEndTime: () => number;
   getVideoDuration: () => number;
   downloadTrimmedVideo: () => Promise<void>;
+  getTrimmedVideoUrl: () => Promise<string>;
 }
 
 export interface KonvaTextOptions {
@@ -265,13 +443,22 @@ export interface EditorState {
 
 export const DEFAULT_WORKSPACE_CONFIGS = {
   image: {
-    width: 800,
-    height: 800,
+    width: typeof window !== 'undefined' 
+      ? Math.min(800, Math.min(window.innerWidth * 0.6, window.innerHeight * 0.6))
+      : 800,
+    height: typeof window !== 'undefined'
+      ? Math.min(800, Math.min(window.innerWidth * 0.6, window.innerHeight * 0.6))
+      : 800,
+      
     backgroundColor: '#ffffff'
   },
   video: {
-    width: 800,
-    height: 800,
+    width: typeof window !== 'undefined'
+      ? Math.min(800, Math.min(window.innerWidth * 0.6, window.innerHeight * 0.6))
+      : 800,
+    height: typeof window !== 'undefined'
+      ? Math.min(800, Math.min(window.innerWidth * 0.6, window.innerHeight * 0.6))
+      : 800,
     backgroundColor: '#000000'
   }
 } as const;

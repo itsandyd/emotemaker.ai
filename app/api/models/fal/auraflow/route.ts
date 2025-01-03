@@ -3,7 +3,7 @@ import { checkApiLimit, incrementApiLimit } from "@/lib/api-limit";
 import { db } from "@/lib/db";
 import { checkSubscription } from "@/lib/oldsubscription";
 import { auth } from "@clerk/nextjs/server";
-import * as fal from "@fal-ai/serverless-client";
+import { fal } from "@fal-ai/client";
 import { NextResponse } from "next/server";
 
 export const maxDuration = 300;
@@ -18,7 +18,7 @@ fal.config({
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { prompt, image_size, num_inference_steps, guidance_scale, num_images, enable_safety_checker, emoteType, image } = body;
+    const { prompt, num_inference_steps, guidance_scale, num_images, emoteType } = body;
     const { userId } = auth();
 
     // Validate input
@@ -30,18 +30,17 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const finalPrompt = generateThemedEmotePrompt(prompt, emoteType); // Use emoteType to generate the final prompt
+    const finalPrompt = generateThemedEmotePrompt(prompt, emoteType);
 
     const result = await fal.subscribe("fal-ai/aura-flow", {
       input: {
-        prompt: finalPrompt, // Use the finalPrompt with emoteType
-        image_size: image_size || "square_hd",
-        num_inference_steps: num_inference_steps || 28,
+        prompt: finalPrompt,
+        num_inference_steps: num_inference_steps || 50,
         guidance_scale: guidance_scale || 3.5,
         num_images: num_images || 1,
-        enable_safety_checker: enable_safety_checker !== undefined ? enable_safety_checker : true,
-        image: image, // Include the image in the request if the API supports it
+        expand_prompt: true
       },
+      logs: true,
       onQueueUpdate: (update) => {
         if (update.status === "IN_PROGRESS") {
           update.logs?.map((log) => log.message).forEach(console.log);
@@ -69,7 +68,7 @@ export async function POST(req: Request) {
     return NextResponse.json(result);
 
   } catch (error) {
-    console.log('[FAL_FLUX_DEV_ERROR]', error);
+    console.log('[FAL_AURA_FLOW_ERROR]', error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 }

@@ -91,6 +91,7 @@ model Emote {
   originalCreatorId String?
   createdAt         DateTime?     @default(now())
   emoteForSale      EmoteForSale?
+  isVideo           Boolean       @default(false)
 
   users             UserEmote[]
   User              User?       @relation(fields: [userId], references: [id])

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import * as fal from "@fal-ai/serverless-client";
+import { fal } from "@fal-ai/client";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import AWS from "aws-sdk";
@@ -10,13 +10,15 @@ import axios from "axios";
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
-interface FalVideoResponse {
-  video: {
-    url: string;
-  };
+interface VideoResult {
+  url: string;
 }
 
-interface FalVideoInput {
+interface MinimaxVideoResponse {
+  video: VideoResult;
+}
+
+interface MinimaxVideoInput {
   prompt: string;
   image_url: string;
   prompt_optimizer?: boolean;
@@ -99,14 +101,14 @@ export async function POST(req: Request) {
       return new NextResponse(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 400 });
     }
 
-    const result = await fal.subscribe<FalVideoInput, FalVideoResponse>(
+    const result = await fal.subscribe(
       "fal-ai/minimax/video-01-live/image-to-video",
       {
         input: {
           prompt,
           image_url: falImageUrl,
           prompt_optimizer
-        },
+        } as MinimaxVideoInput,
         logs: true,
         onQueueUpdate: (update) => {
           if (update.status === "IN_PROGRESS" && update.logs) {
@@ -118,7 +120,8 @@ export async function POST(req: Request) {
 
     let s3VideoUrl;
     try {
-      s3VideoUrl = await uploadVideoToS3(result.video.url);
+      const videoResult = result.data as MinimaxVideoResponse;
+      s3VideoUrl = await uploadVideoToS3(videoResult.video.url);
 
       const emote = await db.emote.create({
         data: {

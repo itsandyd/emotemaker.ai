@@ -23,6 +23,7 @@ import { InpaintSidebar } from "./inpaint-sidebar"
 import { VideoSidebar } from "./video-sidebar"
 import { VideoControls } from './video-controls'
 import { DEFAULT_WORKSPACE_CONFIGS } from "../types"
+import Konva from 'konva';
 
 interface EditorProps {
   userId: string;
@@ -39,11 +40,13 @@ export const Editor = ({
   const [emotes, setEmotes] = useState<Emote[]>(initialEmotes)
   const [currentPrompt, setCurrentPrompt] = useState<string>("")
   const [isEditorReady, setIsEditorReady] = useState(false)
+  const [zoomLevel, setZoomLevel] = useState(1)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const onClearSelection = useCallback(() => {
     if (activeTool !== "draw" && activeTool !== "video-controls") {
-      setActiveTool("select")
+      // Don't clear selection when clicking outside
+      // setActiveTool("select");
     }
   }, [activeTool])
 
@@ -51,39 +54,78 @@ export const Editor = ({
     clearSelectionCallback: onClearSelection
   })
 
+  // Initialize editor first
   useEffect(() => {
     if (containerRef.current) {
       init(containerRef.current, initialWorkspaceType);
       setIsEditorReady(true);
     }
-  }, [init, initialWorkspaceType])
+  }, [init, initialWorkspaceType]);
 
-  // Reset editor ready state when workspace type changes
+  // Handle stage click events
   useEffect(() => {
-    setIsEditorReady(false);
-  }, [])
+    const stage = editor?.stage;
+    if (!stage) return;
+
+    const clickHandler = (e: any) => {
+      // Prevent deselection when clicking the stage background
+      if (e.target === stage) {
+        e.cancelBubble = true;
+      }
+    };
+    
+    stage.on('click', clickHandler);
+    return () => {
+      stage.off('click', clickHandler);
+    };
+  }, [editor]);
+
+  // Handle zoom and resize
+  useEffect(() => {
+    if (!editor?.stage || !isEditorReady || !containerRef.current) return;
+    
+    const handleResize = () => {
+      if (!containerRef.current) return;
+      
+      const containerWidth = containerRef.current.clientWidth;
+      const containerHeight = containerRef.current.clientHeight;
+      
+      // Calculate the maximum scale that fits within the container
+      const scaleX = containerWidth / 500; // Using fixed 500x500 like Fabric.js
+      const scaleY = containerHeight / 500;
+      const scale = Math.min(scaleX, scaleY, 1); // Never scale up beyond original size
+      
+      setZoomLevel(scale);
+    }
+
+    handleResize();
+    
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(containerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    }
+  }, [isEditorReady, editor?.stage])
 
   const onChangeActiveTool = useCallback((tool: ActiveTool) => {
     if (tool === "draw") {
-      editor?.enableDrawingMode()
-    }
-
-    if (activeTool === "draw") {
-      editor?.disableDrawingMode()
+      editor?.enableDrawingMode();
+    } else if (activeTool === "draw") {
+      editor?.disableDrawingMode();
     }
     
-    if (tool === activeTool) {
-      return setActiveTool("select")
+    // Don't change selection when changing tools
+    const selectedNode = editor?.selectedNode;
+    setActiveTool(tool);
+    if (selectedNode) {
+      editor?.setSelectedNode(selectedNode);
     }
-
-    setActiveTool(tool)
-  }, [activeTool, editor])
+  }, [activeTool, editor]);
 
   const addEmote = useCallback((newEmote: Emote) => {
     setEmotes(prevEmotes => [newEmote, ...prevEmotes])
   }, [])
-
-  const config = DEFAULT_WORKSPACE_CONFIGS[initialWorkspaceType]
 
   return (
     <div className="flex flex-col h-full">
@@ -170,33 +212,36 @@ export const Editor = ({
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-        <main className="flex-1 flex flex-col overflow-hidden bg-slate-200">
-          <Toolbar 
-            editor={editor}
-            activeTool={activeTool}
-            onChangeActiveTool={onChangeActiveTool}
-            addEmote={addEmote}
-            currentPrompt={currentPrompt}
-          />
-          <div className="flex-1 flex items-center justify-center">
-            <div 
-              className="relative" 
-              ref={containerRef}
-              style={{
-                width: config.width,
-                height: config.height,
-                backgroundColor: config.backgroundColor
-              }}
-            >
-              {editor?.stage && (
-                <div className="absolute inset-0 pointer-events-none">
-                  <VideoControls editor={editor} />
-                </div>
-              )}
+          <main className="flex-1 flex flex-col overflow-hidden bg-slate-200">
+            <Toolbar 
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+              addEmote={addEmote}
+              currentPrompt={currentPrompt}
+            />
+            <div className="flex-1 relative">
+              <div 
+                className="absolute inset-0"
+                style={{
+                  width: 500,
+                  height: 500,
+                  backgroundColor: '#f0f0f0',
+                  left: '50%',
+                  top: '50%',
+                  transform: `translate(-50%, -60%)`,
+                }}
+                ref={containerRef}
+              >
+                {editor?.stage && (
+                  <div className="absolute inset-0 pointer-events-none">
+                    <VideoControls editor={editor} />
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-          <Footer />
-        </main>
+            <Footer />
+          </main>
       </div>
     </div>
   )

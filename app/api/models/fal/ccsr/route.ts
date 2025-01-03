@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import * as fal from "@fal-ai/serverless-client";
+import { fal } from "@fal-ai/client";
 
 export async function POST(req: Request) {
     try {

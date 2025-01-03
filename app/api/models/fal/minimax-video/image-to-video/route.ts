@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import * as fal from "@fal-ai/serverless-client";
+import { fal } from "@fal-ai/client";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import AWS from "aws-sdk";
@@ -101,7 +101,7 @@ export async function POST(req: Request) {
       return new NextResponse(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 400 });
     }
 
-    const result = await fal.subscribe<FalVideoInput, FalVideoResponse>(
+    const result = await fal.subscribe(
       "fal-ai/minimax-video/image-to-video",
       {
         input: {
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
     // Upload the video to S3
     let s3VideoUrl;
     try {
-      s3VideoUrl = await uploadVideoToS3(result.video.url);
+      s3VideoUrl = await uploadVideoToS3(result.data.video.url);
 
       // Save as an emote with video type
       const emote = await db.emote.create({

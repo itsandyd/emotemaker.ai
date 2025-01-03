@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { checkSubscription } from "../lib/subscription";
 
 
-import { auth } from "@clerk/nextjs/server";
 import { useUser } from '@clerk/nextjs'
 import { useProModal } from "../hooks/use-pro-modal";
 import { getUser } from "../actions/get-user";
@@ -64,15 +63,18 @@ export default function LandingPage() {
   useEffect(() => {
     const initUser = async () => {
       if (user) {
-        const name = user.firstName || 'Default Name';
-        const email = user.primaryEmailAddress?.emailAddress || 'default@example.com';
-        console.log("Updating user:", user.id, name, email); // Debugging line
-        await getUser({ userId: user.id, name, email });
+        try {
+          const name = user.firstName || 'Default Name';
+          const email = user.primaryEmailAddress?.emailAddress || 'default@example.com';
+          await getUser({ userId: user.id, name, email });
+        } catch (error) {
+          console.error("Failed to initialize user:", error);
+        }
       }
     };
   
     initUser();
-  }, [user]); // Dependency array includes user to re-run when user changes
+  }, [user]);
 
   useEffect(() => {
     const fetchIsPro = async () => {

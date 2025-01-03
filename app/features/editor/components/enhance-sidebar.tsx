@@ -14,7 +14,6 @@ import toast from "react-hot-toast"
 import axios from "axios"
 import { Slider } from "@/components/ui/slider"
 import { Input } from "@/components/ui/input"
-import * as fal from "@fal-ai/serverless-client";
 
 // Add this type definition at the top of your file
 type FalResponse = {

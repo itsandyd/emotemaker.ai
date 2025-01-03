@@ -10,12 +10,12 @@ import { ActiveTool, KonvaEditor } from "../types";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
 } from "@/components/ui/pagination";
 import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -39,9 +39,9 @@ export const EmoteSidebar = ({ activeTool, onChangeActiveTool, editor, emotes = 
 
     const filteredEmotes = (emotes || []).filter(emote => {
         const matchesSearch = emote.prompt?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesType = currentTab === "images" 
-            ? !emote.videoUrl 
-            : emote.videoUrl;
+        const matchesType = currentTab === "images"
+            ? !emote.isVideo
+            : emote.isVideo;
         return matchesSearch && matchesType;
     });
 
@@ -75,21 +75,39 @@ export const EmoteSidebar = ({ activeTool, onChangeActiveTool, editor, emotes = 
             toast.error('Editor is not ready. Please try again in a moment.');
             return;
         }
-        
+
         try {
             setLoading(true);
             console.log('Adding emote to canvas:', emote);
-            
-            if (emote.videoUrl) {
-                console.log('Adding video:', emote.videoUrl);
-                await editor.addVideo(emote.videoUrl);
+
+            if (emote.isVideo) {
+                console.log('Adding video:', emote.imageUrl);
+                await editor.addVideo(emote.imageUrl!);
                 toast.success('Video added to canvas');
-            } else if (emote.imageUrl) {
-                console.log('Adding image:', emote.imageUrl);
-                await editor.addImage(emote.imageUrl);
-                toast.success('Image added to canvas');
             } else {
-                throw new Error('No media URL available');
+                console.log('Adding image:', emote.imageUrl);
+                await editor.addImage(emote.imageUrl!);
+
+                // Scale and position the image to match canvas exactly
+                const activeNode = editor.getActiveObject();
+                if (activeNode) {
+                    const canvasWidth = editor.stage.width();
+                    const canvasHeight = editor.stage.height();
+
+                    // Reset position to top-left corner
+                    activeNode.position({
+                        x: 0,
+                        y: 0
+                    });
+
+                    // Scale to match canvas dimensions exactly
+                    const scaleX = canvasWidth / activeNode.width();
+                    const scaleY = canvasHeight / activeNode.height();
+                    activeNode.scale({ x: scaleX, y: scaleY });
+
+                    editor.layer?.batchDraw();
+                }
+                toast.success('Image added to canvas');
             }
         } catch (error) {
             console.error('Error adding to canvas:', error);
@@ -113,12 +131,12 @@ export const EmoteSidebar = ({ activeTool, onChangeActiveTool, editor, emotes = 
         <aside className={cn("bg-white relative border-r z-[40] w-[300px] h-full flex flex-col", activeTool === "emotes" ? "visible" : "hidden")}>
             <ToolSidebarHeader title="Emotes" description="Add emotes to your canvas" />
             <div className="p-4 space-y-4">
-                <Input 
-                    placeholder="Search emotes..." 
+                <Input
+                    placeholder="Search emotes..."
                     value={searchTerm}
                     onChange={handleSearchChange}
                 />
-                
+
                 <Tabs value={currentTab} onValueChange={(value) => setCurrentTab(value as "images" | "videos")}>
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="images" className="flex items-center gap-2">
@@ -132,78 +150,80 @@ export const EmoteSidebar = ({ activeTool, onChangeActiveTool, editor, emotes = 
                     </TabsList>
                 </Tabs>
             </div>
-            <ScrollArea className="flex-grow">
-                <div className="p-4">
-                    {loading ? (
-                        <LoadingSkeleton />
-                    ) : (
-                        <div className="grid grid-cols-2 gap-4">
-                            {paginatedEmotes.map((emote: Emote) => (
-                                <div 
-                                    key={emote.id} 
-                                    className="relative w-full h-[100px] group hover:opacity-75 transition bg-muted rounded-sm overflow-hidden border"
-                                >
-                                    {emote.videoUrl ? (
-                                        <video
-                                            src={emote.videoUrl}
-                                            className="object-cover w-full h-full"
-                                            muted
-                                            loop
-                                            onMouseOver={(e) => e.currentTarget.play()}
-                                            onMouseOut={(e) => e.currentTarget.pause()}
-                                        />
-                                    ) : (
-                                        <img
-                                            src={emote.imageUrl!}
-                                            alt={emote.prompt || emote.id}
-                                            className="object-cover w-full h-full"
-                                        />
-                                    )}
-                                    <button
-                                        onClick={() => handleAddToCanvas(emote)}
-                                        disabled={!isEditorReady || loading}
-                                        className={cn(
-                                            "absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition bg-black bg-opacity-50 flex items-center justify-center text-white",
-                                            (!isEditorReady || loading) ? "cursor-wait" : "cursor-pointer"
-                                        )}
+            <div className="flex-1 flex flex-col min-h-0">
+                <ScrollArea className="flex-1">
+                    <div className="p-4">
+                        {loading ? (
+                            <LoadingSkeleton />
+                        ) : (
+                            <div className="grid grid-cols-2 gap-4">
+                                {paginatedEmotes.map((emote: Emote) => (
+                                    <div
+                                        key={emote.id}
+                                        className="relative w-full h-[100px] group hover:opacity-75 transition bg-muted rounded-sm overflow-hidden border"
                                     >
-                                        {loading ? (
-                                            <Loader className="h-4 w-4 animate-spin" />
+                                        {emote.isVideo ? (
+                                            <video
+                                                src={emote.imageUrl as string}
+                                                className="object-cover w-full h-full"
+                                                muted
+                                                loop
+                                                onMouseOver={(e) => e.currentTarget.play()}
+                                                onMouseOut={(e) => e.currentTarget.pause()}
+                                            />
                                         ) : (
-                                            'Add to Canvas'
+                                            <img
+                                                src={emote.imageUrl as string}
+                                                alt={emote.prompt || emote.id}
+                                                className="object-cover w-full h-full"
+                                            />
                                         )}
-                                    </button>
-                                    {emote.videoUrl && (
-                                        <div className="absolute top-2 right-2">
-                                            <FileVideo className="h-4 w-4 text-white" />
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                                        <button
+                                            onClick={() => handleAddToCanvas(emote)}
+                                            disabled={!isEditorReady || loading}
+                                            className={cn(
+                                                "absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition bg-black bg-opacity-50 flex items-center justify-center text-white",
+                                                (!isEditorReady || loading) ? "cursor-wait" : "cursor-pointer"
+                                            )}
+                                        >
+                                            {loading ? (
+                                                <Loader className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                'Add to Canvas'
+                                            )}
+                                        </button>
+                                        {emote.isVideo && (
+                                            <div className="absolute top-2 right-2">
+                                                <FileVideo className="h-4 w-4 text-white" />
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
+                <div className="p-4 flex justify-between items-center border-t">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm font-medium">
+                        {currentPage} / {totalPages}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
                 </div>
-            </ScrollArea>
-            <div className="p-4 flex justify-between items-center">
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                >
-                    <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-medium">
-                    {currentPage} / {totalPages}
-                </span>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages}
-                >
-                    <ChevronRight className="h-4 w-4" />
-                </Button>
             </div>
             <ToolSidebarClose onClick={onClose} />
         </aside>

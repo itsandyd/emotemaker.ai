@@ -3,7 +3,7 @@ import { checkApiLimit, incrementApiLimit } from "@/lib/api-limit";
 import { db } from "@/lib/db";
 import { checkSubscription } from "@/lib/oldsubscription";
 import { auth } from "@clerk/nextjs/server";
-import * as fal from "@fal-ai/serverless-client";
+import { fal } from "@fal-ai/client";
 import { NextResponse } from "next/server";
 
 export const maxDuration = 300;
@@ -14,6 +14,12 @@ export const dynamic = 'force-dynamic';
 fal.config({
   credentials: process.env.FAL_KEY,
 });
+
+interface FluxProResponse {
+  images: {
+    url: string;
+  }[];
+}
 
 export async function POST(req: Request) {
   try {
@@ -32,22 +38,21 @@ export async function POST(req: Request) {
 
     const finalPrompt = generateThemedEmotePrompt(prompt, emoteType); // Use emoteType to generate the final prompt
 
-    const result = await fal.subscribe("fal-ai/flux-pro/v1.1", {
-      input: {
-        prompt: finalPrompt, // Use the finalPrompt with emoteType
-        image_size: image_size || "square_hd",
-        num_inference_steps: num_inference_steps || 28,
-        guidance_scale: guidance_scale || 3.5,
-        num_images: num_images || 1,
-        enable_safety_checker: enable_safety_checker !== undefined ? enable_safety_checker : true,
-        image: image, // Include the image in the request if the API supports it
-      },
-      onQueueUpdate: (update) => {
-        if (update.status === "IN_PROGRESS") {
-          update.logs?.map((log) => log.message).forEach(console.log);
-        }
-      },
-    });
+    const result = await fal.subscribe(
+      "fal-ai/flux-pro/v1.1",
+      {
+        input: {
+          prompt: finalPrompt,
+          image_size: image_size || "square_hd",
+          num_images: num_images || 1,
+        },
+        onQueueUpdate: (update) => {
+          if (update.status === "IN_PROGRESS") {
+            update.logs?.map((log) => log.message).forEach(console.log);
+          }
+        },
+      }
+    );
 
     const userCredits = await db.user.findUnique({
       where: { id: userId },
