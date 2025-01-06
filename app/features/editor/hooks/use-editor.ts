@@ -1,6 +1,6 @@
 import { useCallback, useState, useMemo, useRef } from "react";
 import Konva from 'konva';
-import { KonvaEditor, WorkspaceType, VideoObject, DEFAULT_WORKSPACE_CONFIGS, DEFAULT_EDITOR_STATE, EditorState, ShapeType, KonvaTextOptions, FilterType } from "../types";
+import { KonvaEditor, WorkspaceType, VideoObject, DEFAULT_WORKSPACE_CONFIGS, DEFAULT_EDITOR_STATE, EditorState, ShapeType, KonvaTextOptions, FilterType, LayerType } from "../types";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { Emote } from "@prisma/client";
@@ -30,7 +30,8 @@ const loadImage = (url: string): Promise<HTMLImageElement> => {
 
 export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditorReturn => {
   const [stage, setStage] = useState<Konva.Stage | null>(null);
-  const [layer, setLayer] = useState<Konva.Layer | null>(null);
+  const [layers, setLayers] = useState<Map<LayerType, Konva.Layer>>(new Map());
+  const [activeLayer, setActiveLayer] = useState<Konva.Layer | null>(null);
   const [selectedNode, setSelectedNode] = useState<Konva.Node | null>(null);
   const [editorState, setEditorState] = useState<EditorState>(DEFAULT_EDITOR_STATE);
   const transformer = useRef<Konva.Transformer | null>(null);
@@ -54,11 +55,11 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
   }, []);
 
   const saveToHistory = useCallback(() => {
-    if (!layer) return;
-    const nodes = layer.children || [];
+    if (!activeLayer) return;
+    const nodes = activeLayer.children || [];
     history.current.undoStack.push(nodes.map(node => node.clone()));
     history.current.redoStack = [];
-  }, [layer]);
+  }, [activeLayer]);
 
   const init = useCallback((container: HTMLDivElement, workspaceType: WorkspaceType) => {
     const config = DEFAULT_WORKSPACE_CONFIGS[workspaceType];
@@ -69,10 +70,35 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       height: config.height
     });
 
-    const newLayer = new Konva.Layer();
-    newStage.add(newLayer);
+    // Create initial layers
+    const newLayers = new Map<LayerType, Konva.Layer>();
+    const mainLayer = new Konva.Layer();
+    const emotesLayer = new Konva.Layer();
+    const shapesLayer = new Konva.Layer();
+    const textLayer = new Konva.Layer();
+    const generatedLayer = new Konva.Layer();
 
-    // Add background
+    // Set initial visibility
+    mainLayer.visible(true);
+    emotesLayer.visible(true);
+    shapesLayer.visible(true);
+    textLayer.visible(true);
+    generatedLayer.visible(true);
+
+    newLayers.set('main', mainLayer);
+    newLayers.set('emotes', emotesLayer);
+    newLayers.set('shapes', shapesLayer);
+    newLayers.set('text', textLayer);
+    newLayers.set('generated', generatedLayer);
+
+    // Add all layers to stage
+    newStage.add(mainLayer);
+    newStage.add(emotesLayer);
+    newStage.add(shapesLayer);
+    newStage.add(textLayer);
+    newStage.add(generatedLayer);
+
+    // Add background to main layer
     const background = new Konva.Rect({
       x: 0,
       y: 0,
@@ -81,12 +107,11 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       fill: config.backgroundColor,
       name: 'background'
     });
-    newLayer.add(background);
+    mainLayer.add(background);
 
-    // Add transformer
+    // Add transformer to main layer
     const newTransformer = new Konva.Transformer({
       boundBoxFunc: (oldBox, newBox) => {
-        // Limit resize
         const maxWidth = config.width * 2;
         const maxHeight = config.height * 2;
         if (newBox.width > maxWidth || newBox.height > maxHeight) {
@@ -95,7 +120,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
         return newBox;
       }
     });
-    newLayer.add(newTransformer);
+    mainLayer.add(newTransformer);
     transformer.current = newTransformer;
 
     // Setup event listeners
@@ -104,7 +129,6 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       const isBackground = target === background || target === newStage;
       const isTransformer = transformer.current && (target as any).getClassName?.() === 'Transformer';
 
-      // Only clear selection if clicking directly on the background
       if (isBackground) {
         setSelectedNode(null);
         if (transformer.current) {
@@ -116,7 +140,6 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
 
       if (isTransformer) return;
 
-      // If clicking on a video image, select its parent group instead
       if (target instanceof Konva.Image && target.parent?.getAttr('objectType') === 'video') {
         const videoGroup = target.parent;
         setSelectedNode(videoGroup);
@@ -126,7 +149,6 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
         return;
       }
 
-      // Only update selection if clicking on a selectable object
       if (target instanceof Konva.Group || target instanceof Konva.Shape || target instanceof Konva.Image) {
         setSelectedNode(target);
         if (transformer.current) {
@@ -136,22 +158,79 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     });
 
     setStage(newStage);
-    setLayer(newLayer);
+    setLayers(newLayers);
+    setActiveLayer(mainLayer);
+
+    // Ensure all layers are visible after initialization
+    newLayers.forEach(layer => {
+      layer.visible(true);
+      layer.draw();
+    });
   }, [clearSelectionCallback]);
+
+  const addLayer = useCallback((type: LayerType): Konva.Layer => {
+    const newLayer = new Konva.Layer();
+    stage?.add(newLayer);
+    setLayers(prev => {
+      const newLayers = new Map(prev);
+      newLayers.set(type, newLayer);
+      return newLayers;
+    });
+    return newLayer;
+  }, [stage]);
+
+  const getLayer = useCallback((type: LayerType): Konva.Layer | null => {
+    return layers.get(type) || null;
+  }, [layers]);
+
+  const handleSetActiveLayer = useCallback((type: LayerType) => {
+    const layer = layers.get(type);
+    if (layer && stage) {
+      // Set the new active layer
+      setActiveLayer(layer);
+
+      // Ensure all layers are visible and drawn
+      stage.getLayers().forEach(l => {
+        l.visible(true);
+        l.draw();
+      });
+
+      // Move the active layer to top for proper stacking
+      layer.moveToTop();
+
+      // If there's a transformer, make sure it stays with its target
+      if (transformer.current && transformer.current.nodes().length > 0) {
+        const targetNode = transformer.current.nodes()[0];
+        const targetLayer = targetNode.getLayer();
+        if (targetLayer) {
+          transformer.current.remove(); // Remove from current layer
+          targetLayer.add(transformer.current); // Add to target's layer
+          transformer.current.moveToTop();
+          targetLayer.draw();
+        }
+      }
+
+      // Final draw to ensure everything is visible
+      stage.draw();
+    }
+  }, [stage, layers]);
 
   const editor: KonvaEditor = useMemo(() => ({
     stage,
-    layer,
+    layers,
+    activeLayer,
     selectedNode,
     history: history.current,
 
     init,
     setStage,
-    setLayer,
+    setActiveLayer: handleSetActiveLayer,
+    addLayer,
+    getLayer,
     setSelectedNode,
 
     addImage: async (url: string) => {
-      if (!layer || !stage) {
+      if (!activeLayer || !stage) {
         console.error('No layer or stage available');
         return Promise.reject('No layer or stage');
       }
@@ -168,7 +247,8 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
               image: image,
               draggable: true,
               x: stage.width() / 2,
-              y: stage.height() / 2
+              y: stage.height() / 2,
+              listening: true // Ensure the image can receive events
             });
 
             // Scale image to fit workspace while maintaining aspect ratio
@@ -183,8 +263,24 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
               y: (stage.height() - image.height * scale) / 2
             });
 
-            layer.add(konvaImage);
-            layer.batchDraw();
+            // Add to layer and ensure it's visible
+            activeLayer.add(konvaImage);
+            activeLayer.moveToTop();
+            activeLayer.visible(true);
+            
+            // Draw all layers to ensure everything is visible
+            stage.getLayers().forEach(layer => {
+              layer.visible(true);
+              layer.draw();
+            });
+
+            // Select the newly added image
+            setSelectedNode(konvaImage);
+            if (transformer.current) {
+              transformer.current.nodes([konvaImage]);
+              transformer.current.moveToTop();
+            }
+
             saveToHistory();
             console.log('Image added to canvas successfully');
             resolve();
@@ -204,7 +300,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     },
 
     addVideo: async (url: string) => {
-      if (!layer || !stage) {
+      if (!activeLayer || !stage) {
         console.error('No layer or stage available');
         return Promise.reject('No layer or stage');
       }
@@ -255,11 +351,11 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
             group.play = () => {
               video.currentTime = group.attrs.startTime || 0;
               video.play().catch(console.error);
-              layer.draw();
+              activeLayer.draw();
             };
             group.pause = () => {
               video.pause();
-              layer.draw();
+              activeLayer.draw();
             };
             group.setStartTime = (time: number) => {
               const newTime = Math.max(0, Math.min(time, video.duration));
@@ -267,7 +363,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
               if (video.currentTime < newTime) {
                 video.currentTime = newTime;
               }
-              layer.draw();
+              activeLayer.draw();
             };
             group.setEndTime = (time: number) => {
               const newTime = Math.max(group.attrs.startTime || 0, Math.min(time, video.duration));
@@ -275,7 +371,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
               if (video.currentTime > newTime) {
                 video.currentTime = group.attrs.startTime || 0;
               }
-              layer.draw();
+              activeLayer.draw();
             };
             group.getDuration = () => video.duration;
             group.getCurrentTime = () => video.currentTime;
@@ -284,17 +380,17 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
               const endTime = group.attrs.endTime || video.duration;
               const newTime = Math.max(startTime, Math.min(time, endTime));
               video.currentTime = newTime;
-              layer.draw();
+              activeLayer.draw();
             };
 
             // Add the group to the layer
-            layer.add(group);
+            activeLayer.add(group);
 
             // Create animation to update video frames
             const anim = new Konva.Animation(() => {
-              layer.batchDraw();
+              activeLayer.batchDraw();
               return true;
-            }, layer);
+            }, activeLayer);
 
             // Add video loop handling
             video.addEventListener('timeupdate', () => {
@@ -344,7 +440,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     },
 
     addText: (text: string, options?: KonvaTextOptions) => {
-      if (!layer || !stage) return;
+      if (!activeLayer || !stage) return;
 
       const textNode = new Konva.Text({
         text,
@@ -359,12 +455,12 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
         y: stage.height() / 2
       });
 
-      layer.add(textNode);
+      activeLayer.add(textNode);
       saveToHistory();
     },
 
     addShape: (type: ShapeType) => {
-      if (!layer || !stage) return;
+      if (!activeLayer || !stage) return;
 
       let shape: Konva.Shape;
       const commonConfig = {
@@ -415,12 +511,12 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
           break;
       }
 
-      layer.add(shape);
+      activeLayer.add(shape);
       saveToHistory();
     },
 
     removeSelected: () => {
-      if (!selectedNode || !layer) return;
+      if (!selectedNode || !activeLayer) return;
       selectedNode.destroy();
       setSelectedNode(null);
       transformer.current?.nodes([]);
@@ -428,11 +524,11 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     },
 
     clear: () => {
-      if (!layer) return;
-      const background = layer.findOne('.background');
-      layer.destroyChildren();
-      if (background) layer.add(background as any);
-      if (transformer.current) layer.add(transformer.current as any);
+      if (!activeLayer) return;
+      const background = activeLayer.findOne('.background');
+      activeLayer.destroyChildren();
+      if (background) activeLayer.add(background as any);
+      if (transformer.current) activeLayer.add(transformer.current as any);
       saveToHistory();
     },
 
@@ -448,26 +544,26 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     },
 
     undo: () => {
-      if (!layer || history.current.undoStack.length === 0) return;
-      const currentState = layer.children?.map(node => node.clone());
+      if (!activeLayer || history.current.undoStack.length === 0) return;
+      const currentState = activeLayer.children?.map(node => node.clone());
       if (currentState) history.current.redoStack.push(currentState);
       
       const previousState = history.current.undoStack.pop();
       if (previousState) {
-        layer.destroyChildren();
-        previousState.forEach(node => layer.add(node as any));
+        activeLayer.destroyChildren();
+        previousState.forEach(node => activeLayer.add(node as any));
       }
     },
 
     redo: () => {
-      if (!layer || history.current.redoStack.length === 0) return;
-      const currentState = layer.children?.map(node => node.clone());
+      if (!activeLayer || history.current.redoStack.length === 0) return;
+      const currentState = activeLayer.children?.map(node => node.clone());
       if (currentState) history.current.undoStack.push(currentState);
       
       const nextState = history.current.redoStack.pop();
       if (nextState) {
-        layer.destroyChildren();
-        nextState.forEach(node => layer.add(node as any));
+        activeLayer.destroyChildren();
+        nextState.forEach(node => activeLayer.add(node as any));
       }
     },
 
@@ -492,7 +588,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
           draggable: true
         });
 
-        layer?.add(lastLine);
+        activeLayer?.add(lastLine);
       });
 
       stage.on('mousemove touchmove', () => {
@@ -502,7 +598,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
 
         const newPoints = lastLine.points().concat([pos.x, pos.y]);
         lastLine.points(newPoints);
-        layer?.batchDraw();
+        activeLayer?.batchDraw();
       });
 
       stage.on('mouseup touchend', () => {
@@ -527,7 +623,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       setEditorState(prev => ({ ...prev, strokeColor: color }));
       if (selectedNode instanceof Konva.Shape) {
         selectedNode.stroke(color);
-        layer?.batchDraw();
+        activeLayer?.batchDraw();
       }
     },
 
@@ -535,7 +631,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       setEditorState(prev => ({ ...prev, fillColor: color }));
       if (selectedNode instanceof Konva.Shape || selectedNode instanceof Konva.Text) {
         selectedNode.fill(color);
-        layer?.batchDraw();
+        activeLayer?.batchDraw();
       }
     },
 
@@ -543,7 +639,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       setEditorState(prev => ({ ...prev, strokeWidth: width }));
       if (selectedNode instanceof Konva.Shape) {
         selectedNode.strokeWidth(width);
-        layer?.batchDraw();
+        activeLayer?.batchDraw();
       }
     },
 
@@ -551,7 +647,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       setEditorState(prev => ({ ...prev, fontFamily: font }));
       if (selectedNode instanceof Konva.Text) {
         selectedNode.fontFamily(font);
-        layer?.batchDraw();
+        activeLayer?.batchDraw();
       }
     },
 
@@ -559,7 +655,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       setEditorState(prev => ({ ...prev, fontSize: size }));
       if (selectedNode instanceof Konva.Text) {
         selectedNode.fontSize(size);
-        layer?.batchDraw();
+        activeLayer?.batchDraw();
       }
     },
 
@@ -567,20 +663,20 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       setEditorState(prev => ({ ...prev, opacity }));
       if (selectedNode) {
         selectedNode.opacity(opacity);
-        layer?.batchDraw();
+        activeLayer?.batchDraw();
       }
     },
 
     bringForward: () => {
       if (!selectedNode) return;
       selectedNode.moveUp();
-      layer?.batchDraw();
+      activeLayer?.batchDraw();
     },
 
     sendBackward: () => {
       if (!selectedNode) return;
       selectedNode.moveDown();
-      layer?.batchDraw();
+      activeLayer?.batchDraw();
     },
 
     getActiveObject: () => selectedNode,
@@ -646,7 +742,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
         const newImageUrl = response.data.image.url;
         await editor.addImage(newImageUrl);
         selectedNode.destroy();
-        layer?.batchDraw();
+        activeLayer?.batchDraw();
       } catch (error) {
         console.error('Error inpainting image:', error);
         toast.error('Failed to inpaint image');
@@ -681,7 +777,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
         console.log('Background removed, new image:', response.data.image.url);
         await editor.addGeneratedEmote(response.data.image.url);
         selectedNode.destroy();
-        layer?.batchDraw();
+        activeLayer?.batchDraw();
         toast.success('Background removed successfully');
       } catch (error) {
         console.error('Error removing background:', error);
@@ -700,7 +796,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       stage.add(maskLayer);
 
       // Find all mask shapes and add them to the temporary layer
-      const maskShapes = layer?.find('.mask');
+      const maskShapes = activeLayer?.find('.mask');
       maskShapes?.forEach(shape => {
         const clone = shape.clone();
         clone.fill('white');
@@ -759,7 +855,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
           draggable: false
         });
 
-        layer?.add(lastLine);
+        activeLayer?.add(lastLine);
       });
 
       stage.on('mousemove touchmove', () => {
@@ -769,7 +865,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
 
         const newPoints = lastLine.points().concat([pos.x, pos.y]);
         lastLine.points(newPoints);
-        layer?.batchDraw();
+        activeLayer?.batchDraw();
       });
 
       stage.on('mouseup touchend', () => {
@@ -781,10 +877,10 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     },
 
     clearMask: () => {
-      if (!layer) return;
-      const maskShapes = layer.find('.mask');
+      if (!activeLayer) return;
+      const maskShapes = activeLayer.find('.mask');
       maskShapes.forEach(shape => shape.destroy());
-      layer.batchDraw();
+      activeLayer.batchDraw();
       saveToHistory();
     },
 
@@ -804,19 +900,19 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     setBrightness: (value: number) => {
       if (!selectedNode || !editor.isVideoObject(selectedNode)) return;
       selectedNode.setAttr('brightness', value);
-      layer?.batchDraw();
+      activeLayer?.batchDraw();
     },
 
     setContrast: (value: number) => {
       if (!selectedNode || !editor.isVideoObject(selectedNode)) return;
       selectedNode.setAttr('contrast', value);
-      layer?.batchDraw();
+      activeLayer?.batchDraw();
     },
 
     setSaturation: (value: number) => {
       if (!selectedNode || !editor.isVideoObject(selectedNode)) return;
       selectedNode.setAttr('saturation', value);
-      layer?.batchDraw();
+      activeLayer?.batchDraw();
     },
 
     getVolume: () => {
@@ -852,7 +948,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     },
 
     addGeneratedEmote: async (url: string) => {
-      if (!stage || !layer) return Promise.reject("Editor not initialized");
+      if (!stage || !activeLayer) return Promise.reject("Editor not initialized");
       
       try {
         console.log('Loading generated emote:', url);
@@ -874,8 +970,8 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
           scaleY: scale,
         });
 
-        layer.add(imageNode);
-        layer.batchDraw();
+        activeLayer.add(imageNode);
+        activeLayer.batchDraw();
         saveToHistory();
 
         // Select the newly added image
@@ -900,7 +996,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       if (video.currentTime < newTime) {
         video.currentTime = newTime;
       }
-      layer?.batchDraw();
+      activeLayer?.batchDraw();
     },
 
     setVideoEndTime: (time: number) => {
@@ -911,7 +1007,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       if (video.currentTime > newTime) {
         video.currentTime = selectedNode.attrs.startTime;
       }
-      layer?.batchDraw();
+      activeLayer?.batchDraw();
     },
 
     getVideoStartTime: () => {
@@ -1044,7 +1140,16 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       const video = selectedNode.getVideoElement();
       return video.src;
     },
-  }), [stage, layer, selectedNode, editorState, init, saveToHistory]);
+  }), [
+    stage, 
+    layers, 
+    activeLayer, 
+    selectedNode, 
+    init, 
+    addLayer, 
+    getLayer,
+    handleSetActiveLayer
+  ]);
 
   return { editor, init };
 };

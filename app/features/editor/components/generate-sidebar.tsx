@@ -155,6 +155,7 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
         toast.error('Editor not initialized');
         return;
       }
+      editor.setActiveLayer('generated');
       const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`;
       await editor.addGeneratedEmote(proxyUrl);
       toast.success('Added to canvas');

@@ -71,49 +71,24 @@ export const EmoteSidebar = ({ activeTool, onChangeActiveTool, editor, emotes = 
     };
 
     const handleAddToCanvas = async (emote: Emote) => {
-        if (!editor || !editor.stage || !editor.layer) {
-            toast.error('Editor is not ready. Please try again in a moment.');
-            return;
-        }
-
         try {
-            setLoading(true);
-            console.log('Adding emote to canvas:', emote);
-
-            if (emote.isVideo) {
-                console.log('Adding video:', emote.imageUrl);
-                await editor.addVideo(emote.imageUrl!);
-                toast.success('Video added to canvas');
-            } else {
-                console.log('Adding image:', emote.imageUrl);
-                await editor.addImage(emote.imageUrl!);
-
-                // Scale and position the image to match canvas exactly
-                const activeNode = editor.getActiveObject();
-                if (activeNode) {
-                    const canvasWidth = editor.stage.width();
-                    const canvasHeight = editor.stage.height();
-
-                    // Reset position to top-left corner
-                    activeNode.position({
-                        x: 0,
-                        y: 0
-                    });
-
-                    // Scale to match canvas dimensions exactly
-                    const scaleX = canvasWidth / activeNode.width();
-                    const scaleY = canvasHeight / activeNode.height();
-                    activeNode.scale({ x: scaleX, y: scaleY });
-
-                    editor.layer?.batchDraw();
-                }
-                toast.success('Image added to canvas');
+            if (!editor) {
+                toast.error('Editor not initialized');
+                return;
             }
+
+            editor.setActiveLayer('emotes');
+            if (emote.isVideo) {
+                await editor.addVideo(emote.imageUrl as string);
+            } else {
+                await editor.addImage(emote.imageUrl as string);
+            }
+
+            toast.success('Added to canvas');
+            setCurrentPrompt(emote.prompt || '');
         } catch (error) {
             console.error('Error adding to canvas:', error);
-            toast.error('Failed to add to canvas. Please try again.');
-        } finally {
-            setLoading(false);
+            toast.error('Failed to add to canvas');
         }
     };
 
@@ -125,7 +100,7 @@ export const EmoteSidebar = ({ activeTool, onChangeActiveTool, editor, emotes = 
         </div>
     );
 
-    const isEditorReady = editor && editor.stage && editor.layer;
+    const isEditorReady = editor && editor.stage && editor.activeLayer;
 
     return (
         <aside className={cn("bg-white relative border-r z-[40] w-[300px] h-full flex flex-col", activeTool === "emotes" ? "visible" : "hidden")}>

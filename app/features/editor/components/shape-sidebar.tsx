@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils"
-import { ActiveTool, KonvaEditor } from "../types"
+import { ActiveTool, KonvaEditor, ShapeType } from "../types"
 import { ToolSidebarHeader } from "./tool-sidebar-header"
 import { ToolSidebarClose } from "./tool-sidebar-close"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -19,34 +19,40 @@ export const ShapeSidebar = ({ activeTool, onChangeActiveTool, editor }: ShapeSi
         onChangeActiveTool("select")
     }
 
+    const handleAddShape = (type: ShapeType) => {
+        if (!editor) return;
+        editor.setActiveLayer('shapes');
+        editor.addShape(type);
+    }
+
     return (
         <aside className={cn("bg-white relative border-r z-[40] w-[360px] h-full flex flex-col", activeTool === "shapes" ? "visible" : "hidden")}>
             <ToolSidebarHeader title="Shapes" description="Add shapes to your canvas" />
             <ScrollArea>
                 <div className="grid grid-cols-3 gap-4 p-4">
                     <ShapeTool 
-                        onClick={() => editor?.addShape('circle')}
+                        onClick={() => handleAddShape('circle')}
                         icon={FaCircle}
                     />
                     <ShapeTool 
-                        onClick={() => editor?.addShape('rectangle')}
+                        onClick={() => handleAddShape('rectangle')}
                         icon={FaSquare}
                     />
                     <ShapeTool 
-                        onClick={() => editor?.addShape('rectangle')}
+                        onClick={() => handleAddShape('rectangle')}
                         icon={FaSquareFull}
                     />
                     <ShapeTool 
-                        onClick={() => editor?.addShape('triangle')}
+                        onClick={() => handleAddShape('triangle')}
                         icon={IoTriangle}
                     />
                     <ShapeTool 
-                        onClick={() => editor?.addShape('inverseTriangle')}
+                        onClick={() => handleAddShape('inverseTriangle')}
                         icon={IoTriangle}
                         iconClassName="rotate-180"
                     />
                     <ShapeTool 
-                        onClick={() => editor?.addShape('diamond')}
+                        onClick={() => handleAddShape('diamond')}
                         icon={FaDiamond}
                     /> 
                 </div>

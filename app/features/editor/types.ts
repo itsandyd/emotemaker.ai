@@ -358,9 +358,12 @@ export const emoteStyles = {
   }
 } as const;
 
+export type LayerType = 'main' | 'emotes' | 'shapes' | 'text' | 'generated';
+
 export interface KonvaEditor {
   stage: Konva.Stage | null;
-  layer: Konva.Layer | null;
+  layers: Map<LayerType, Konva.Layer>;
+  activeLayer: Konva.Layer | null;
   selectedNode: Konva.Node | null;
   history: {
     undoStack: Konva.Node[][];
@@ -368,7 +371,9 @@ export interface KonvaEditor {
   };
   init: (container: HTMLDivElement, workspaceType: WorkspaceType) => void;
   setStage: (stage: Konva.Stage | null) => void;
-  setLayer: (layer: Konva.Layer | null) => void;
+  setActiveLayer: (layer: LayerType) => void;
+  addLayer: (type: LayerType) => Konva.Layer;
+  getLayer: (type: LayerType) => Konva.Layer | null;
   setSelectedNode: (node: Konva.Node | null) => void;
   addImage: (url: string) => Promise<void>;
   addVideo: (url: string) => Promise<VideoObject>;

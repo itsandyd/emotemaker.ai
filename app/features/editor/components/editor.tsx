@@ -48,19 +48,19 @@ export const Editor = ({
       // Don't clear selection when clicking outside
       // setActiveTool("select");
     }
-  }, [activeTool])
+  }, []);
 
   const { editor, init } = useEditor({
     clearSelectionCallback: onClearSelection
-  })
+  });
 
   // Initialize editor first
   useEffect(() => {
-    if (containerRef.current) {
+    if (containerRef.current && !editor?.stage) {
       init(containerRef.current, initialWorkspaceType);
       setIsEditorReady(true);
     }
-  }, [init, initialWorkspaceType]);
+  }, [init, initialWorkspaceType, editor?.stage]);
 
   // Handle stage click events
   useEffect(() => {
@@ -85,17 +85,33 @@ export const Editor = ({
     if (!editor?.stage || !isEditorReady || !containerRef.current) return;
     
     const handleResize = () => {
-      if (!containerRef.current) return;
+      if (!containerRef.current || !editor.stage) return;
       
       const containerWidth = containerRef.current.clientWidth;
       const containerHeight = containerRef.current.clientHeight;
       
       // Calculate the maximum scale that fits within the container
-      const scaleX = containerWidth / 500; // Using fixed 500x500 like Fabric.js
-      const scaleY = containerHeight / 500;
+      const scaleX = containerWidth / DEFAULT_WORKSPACE_CONFIGS[initialWorkspaceType].width;
+      const scaleY = containerHeight / DEFAULT_WORKSPACE_CONFIGS[initialWorkspaceType].height;
       const scale = Math.min(scaleX, scaleY, 1); // Never scale up beyond original size
       
       setZoomLevel(scale);
+
+      const stage = editor.stage;
+      // Update stage size to maintain aspect ratio
+      stage.width(DEFAULT_WORKSPACE_CONFIGS[initialWorkspaceType].width);
+      stage.height(DEFAULT_WORKSPACE_CONFIGS[initialWorkspaceType].height);
+      stage.scale({ x: scale, y: scale });
+
+      // Center the stage in the container
+      stage.x((containerWidth - DEFAULT_WORKSPACE_CONFIGS[initialWorkspaceType].width * scale) / 2);
+      stage.y((containerHeight - DEFAULT_WORKSPACE_CONFIGS[initialWorkspaceType].height * scale) / 2);
+
+      // Make sure all layers are visible and drawn
+      editor.layers.forEach(layer => {
+        layer.show();
+        layer.batchDraw();
+      });
     }
 
     handleResize();
@@ -106,7 +122,7 @@ export const Editor = ({
     return () => {
       resizeObserver.disconnect();
     }
-  }, [isEditorReady, editor?.stage])
+  }, [isEditorReady, editor?.stage, editor?.layers, initialWorkspaceType]);
 
   const onChangeActiveTool = useCallback((tool: ActiveTool) => {
     if (tool === "draw") {
@@ -121,6 +137,12 @@ export const Editor = ({
     if (selectedNode) {
       editor?.setSelectedNode(selectedNode);
     }
+
+    // Ensure all layers remain visible
+    editor?.layers.forEach(layer => {
+      layer.show();
+      layer.batchDraw();
+    });
   }, [activeTool, editor]);
 
   const addEmote = useCallback((newEmote: Emote) => {
