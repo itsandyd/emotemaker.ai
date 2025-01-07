@@ -23,7 +23,7 @@ import { toast } from "react-hot-toast";
 
 interface EmoteSidebarProps {
     activeTool: ActiveTool;
-    onChangeActiveTool: (tool: ActiveTool) => void;
+    onChangeActiveTool: (tool: ActiveTool, options?: { tab?: "images" | "videos" }) => void;
     editor: KonvaEditor | undefined;
     emotes: Emote[] | undefined;
     setCurrentPrompt: (prompt: string) => void;
@@ -132,48 +132,65 @@ export const EmoteSidebar = ({ activeTool, onChangeActiveTool, editor, emotes = 
                             <LoadingSkeleton />
                         ) : (
                             <div className="grid grid-cols-2 gap-4">
-                                {paginatedEmotes.map((emote: Emote) => (
-                                    <div
-                                        key={emote.id}
-                                        className="relative w-full h-[100px] group hover:opacity-75 transition bg-muted rounded-sm overflow-hidden border"
-                                    >
-                                        {emote.isVideo ? (
-                                            <video
-                                                src={emote.imageUrl as string}
-                                                className="object-cover w-full h-full"
-                                                muted
-                                                loop
-                                                onMouseOver={(e) => e.currentTarget.play()}
-                                                onMouseOut={(e) => e.currentTarget.pause()}
-                                            />
-                                        ) : (
-                                            <img
-                                                src={emote.imageUrl as string}
-                                                alt={emote.prompt || emote.id}
-                                                className="object-cover w-full h-full"
-                                            />
-                                        )}
-                                        <button
-                                            onClick={() => handleAddToCanvas(emote)}
-                                            disabled={!isEditorReady || loading}
-                                            className={cn(
-                                                "absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition bg-black bg-opacity-50 flex items-center justify-center text-white",
-                                                (!isEditorReady || loading) ? "cursor-wait" : "cursor-pointer"
-                                            )}
+                                {paginatedEmotes.length > 0 ? (
+                                    paginatedEmotes.map((emote: Emote) => (
+                                        <div
+                                            key={emote.id}
+                                            className="relative w-full h-[100px] group hover:opacity-75 transition bg-muted rounded-sm overflow-hidden border"
                                         >
-                                            {loading ? (
-                                                <Loader className="h-4 w-4 animate-spin" />
+                                            {emote.isVideo ? (
+                                                <video
+                                                    src={emote.imageUrl as string}
+                                                    className="object-cover w-full h-full"
+                                                    muted
+                                                    loop
+                                                    onMouseOver={(e) => e.currentTarget.play()}
+                                                    onMouseOut={(e) => e.currentTarget.pause()}
+                                                />
                                             ) : (
-                                                'Add to Canvas'
+                                                <img
+                                                    src={emote.imageUrl as string}
+                                                    alt={emote.prompt || emote.id}
+                                                    className="object-cover w-full h-full"
+                                                />
                                             )}
-                                        </button>
-                                        {emote.isVideo && (
-                                            <div className="absolute top-2 right-2">
-                                                <FileVideo className="h-4 w-4 text-white" />
-                                            </div>
-                                        )}
+                                            <button
+                                                onClick={() => handleAddToCanvas(emote)}
+                                                disabled={!isEditorReady || loading}
+                                                className={cn(
+                                                    "absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 transition bg-black bg-opacity-50 flex items-center justify-center text-white",
+                                                    (!isEditorReady || loading) ? "cursor-wait" : "cursor-pointer"
+                                                )}
+                                            >
+                                                {loading ? (
+                                                    <Loader className="h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    'Add to Canvas'
+                                                )}
+                                            </button>
+                                            {emote.isVideo && (
+                                                <div className="absolute top-2 right-2">
+                                                    <FileVideo className="h-4 w-4 text-white" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="col-span-2">
+                                        <Button 
+                                            type="button"
+                                            variant="outline"
+                                            className="w-full"
+                                            onClick={() => {
+                                                onChangeActiveTool("emote-generator", { 
+                                                    tab: currentTab 
+                                                });
+                                            }}
+                                        >
+                                            {currentTab === "videos" ? "Generate a Video" : "Generate an Image"}
+                                        </Button>
                                     </div>
-                                ))}
+                                )}
                             </div>
                         )}
                     </div>

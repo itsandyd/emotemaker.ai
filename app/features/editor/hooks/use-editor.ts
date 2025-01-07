@@ -775,9 +775,51 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
         }
 
         console.log('Background removed, new image:', response.data.image.url);
-        await editor.addGeneratedEmote(response.data.image.url);
+        
+        // Store the current position and scale of the selected node
+        const currentAttrs = {
+          x: selectedNode.x(),
+          y: selectedNode.y(),
+          scaleX: selectedNode.scaleX(),
+          scaleY: selectedNode.scaleY(),
+          rotation: selectedNode.rotation()
+        };
+
+        // Remove the old image
         selectedNode.destroy();
-        activeLayer?.batchDraw();
+        
+        // Load the new image
+        const image = await loadImage(response.data.image.url);
+        const newImage = new Konva.Image({
+          image,
+          draggable: true,
+          ...currentAttrs // Apply the same position and scale as the old image
+        });
+
+        // Add the new image to the active layer
+        if (activeLayer) {
+          activeLayer.add(newImage);
+          
+          // Ensure the layer is visible
+          activeLayer.visible(true);
+          
+          // Draw all layers to ensure everything is visible
+          stage?.getLayers().forEach(layer => {
+            layer.visible(true);
+            layer.draw();
+          });
+
+          // Select the new image
+          setSelectedNode(newImage);
+          if (transformer.current) {
+            transformer.current.nodes([newImage]);
+            transformer.current.moveToTop();
+          }
+
+          // Save to history
+          saveToHistory();
+        }
+
         toast.success('Background removed successfully');
       } catch (error) {
         console.error('Error removing background:', error);

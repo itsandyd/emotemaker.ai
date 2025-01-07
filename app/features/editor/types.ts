@@ -185,6 +185,12 @@ export type EmoteStyle =
 export const generation: Generation = {
   models: [
     {
+      name: "FLUX 1.1 Ultra",
+      description: "Next generation text-to-image model with 10x accelerated speeds.",
+      apiRoute: "/api/models/fal/fluxpro11ultra",
+      options: [] as const
+    },
+    {
       name: "DALL-E 3",
       description: "Latest DALL-E model with high quality and accuracy",
       apiRoute: "/api/models/dalle",

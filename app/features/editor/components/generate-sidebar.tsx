@@ -44,8 +44,14 @@ interface VideoModel {
 const videoGeneration = {
   models: [
     { 
-      name: "Minimax Live",
-      description: "Latest model optimized for creating smooth, natural motion from still images.",
+      name: "Kling 1.6",
+      description: "Professional model for creating high-quality, cinematic motion from still images.",
+      apiRoute: "/api/models/fal/kling-video",
+      credits: 10
+    },
+    { 
+      name: "Minimax",
+      description: "Fast model optimized for creating smooth, natural motion from still images.",
       apiRoute: "/api/models/fal/minimax-video",
       credits: 10
     },
@@ -81,9 +87,18 @@ interface EmoteGeneratorSidebarProps {
   emotes: Emote[];
   addEmote: (newEmote: Emote) => void;
   currentPrompt: string;
+  initialTab?: "images" | "videos";
 }
 
-export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, emotes, addEmote, currentPrompt }: EmoteGeneratorSidebarProps) => {
+export const EmoteGeneratorSidebar = ({ 
+  activeTool, 
+  onChangeActiveTool, 
+  editor, 
+  emotes, 
+  addEmote, 
+  currentPrompt,
+  initialTab = "images" 
+}: EmoteGeneratorSidebarProps) => {
   const [photos, setPhotos] = useState<string[]>([]);
   const [videos, setVideos] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -99,6 +114,13 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
   const ITEMS_PER_PAGE = 10;
   const { userId } = useAuth();
 
+  // Set the initial tab after component mounts
+  useEffect(() => {
+    if (initialTab) {
+      setCurrentTab(initialTab);
+    }
+  }, [initialTab]);
+
   const imageForm = useForm<ImageFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -112,7 +134,7 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
     resolver: zodResolver(formSchema),
     defaultValues: {
       prompt: "",
-      model: "Minimax Live",
+      model: "Kling 1.6",
       duration: "5",
       ratio: "16:9"
     },
@@ -416,6 +438,120 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                   <div className="space-y-4 max-h-[calc(100vh-300px)] overflow-y-auto">
                     <FormField
                       control={videoForm.control}
+                      name="image"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Source Image</FormLabel>
+                          <div className="space-y-4">
+                            {emotes.filter(emote => !emote.isVideo).length > 0 ? (
+                              <>
+                                <ScrollArea className="h-[200px] border rounded-md">
+                                  <div className="grid grid-cols-2 gap-2 p-2">
+                                    {emotes
+                                      .filter(emote => !emote.isVideo)
+                                      .slice((sourceImagePage - 1) * ITEMS_PER_PAGE, sourceImagePage * ITEMS_PER_PAGE)
+                                      .map((emote) => (
+                                        <div
+                                          key={emote.id}
+                                          className={cn(
+                                            "relative w-full h-[80px] cursor-pointer border rounded-sm overflow-hidden",
+                                            selectedEmote?.id === emote.id && "ring-2 ring-primary"
+                                          )}
+                                          onClick={() => {
+                                            setUploadedImage(null);
+                                            setSelectedEmote(emote);
+                                            setImageSource("emote");
+                                            field.onChange(emote.imageUrl);
+                                          }}
+                                        >
+                                          <img
+                                            src={emote.imageUrl!}
+                                            alt={emote.prompt || "Emote"}
+                                            className="object-cover w-full h-full"
+                                          />
+                                        </div>
+                                      ))}
+                                  </div>
+                                </ScrollArea>
+                                <div className="flex justify-between items-center">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setSourceImagePage(Math.max(1, sourceImagePage - 1));
+                                    }}
+                                    disabled={sourceImagePage === 1}
+                                  >
+                                    <ChevronLeft className="h-4 w-4" />
+                                  </Button>
+                                  <span className="text-sm font-medium">
+                                    {sourceImagePage} / {Math.ceil(emotes.filter(emote => !emote.isVideo).length / ITEMS_PER_PAGE)}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setSourceImagePage(Math.min(Math.ceil(emotes.filter(emote => !emote.isVideo).length / ITEMS_PER_PAGE), sourceImagePage + 1));
+                                    }}
+                                    disabled={sourceImagePage === Math.ceil(emotes.filter(emote => !emote.isVideo).length / ITEMS_PER_PAGE)}
+                                  >
+                                    <ChevronRight className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </>
+                            ) : (
+                              <Button 
+                                type="button"
+                                variant="outline"
+                                className="w-full"
+                                onClick={() => setCurrentTab("images")}
+                              >
+                                Generate an Image
+                              </Button>
+                            )}
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={videoForm.control}
+                      name="model"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Model</FormLabel>
+                          <FormControl>
+                            <Select 
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                setSelectedModel(videoGeneration.models.find(m => m.name === value) || videoGeneration.models[0]);
+                              }} 
+                              defaultValue={field.value}
+                            >
+                              <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
+                                <SelectValue placeholder="Select model" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {videoGeneration.models.map((model) => (
+                                  <SelectItem key={model.name} value={model.name}>
+                                    {model.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={videoForm.control}
                       name="prompt"
                       render={({ field, fieldState }) => (
                         <FormItem>
@@ -434,6 +570,7 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                         </FormItem>
                       )}
                     />
+
                     <Button 
                       onClick={enhancePrompt} 
                       disabled={isEnhancing || isGenerating} 
@@ -441,10 +578,11 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                     >
                       {isEnhancing ? <Loader className="animate-spin" /> : "Enhance Prompt (1 Credit)"}
                     </Button>
+
                     {enhancedPrompts.length > 0 && (
                       <div className="mt-2">
                         <Select onValueChange={handleSelectEnhancedPrompt}>
-                          <SelectTrigger className="w-full">
+                          <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
                             <SelectValue placeholder="Select enhanced prompt" />
                           </SelectTrigger>
                           <SelectContent>
@@ -459,46 +597,8 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                         </Select>
                       </div>
                     )}
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value="model">
-                        <AccordionTrigger>Video Generation Model</AccordionTrigger>
-                        <AccordionContent>
-                          <FormField
-                            control={videoForm.control}
-                            name="model"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Model</FormLabel>
-                                <FormControl>
-                                  <Select 
-                                    onValueChange={(value) => {
-                                      field.onChange(value);
-                                      setSelectedModel(videoGeneration.models.find(m => m.name === value) || videoGeneration.models[0]);
-                                    }} 
-                                    defaultValue={field.value}
-                                  >
-                                    <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
-                                      <SelectValue placeholder="Select model" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {videoGeneration.models.map((model) => (
-                                        <SelectItem key={model.name} value={model.name}>
-                                          {model.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </FormControl>
-                                <FormMessage />
-                                <FormDescription>
-                                  {selectedModel?.description || "Select a model to see its description."}
-                                </FormDescription>
-                              </FormItem>
-                            )}
-                          />
-                        </AccordionContent>
-                      </AccordionItem>
 
+                    <Accordion type="single" collapsible>
                       <AccordionItem value="settings">
                         <AccordionTrigger>Settings</AccordionTrigger>
                         <AccordionContent className="space-y-4">
@@ -509,7 +609,7 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                               <FormItem>
                                 <FormLabel>Duration</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <SelectTrigger>
+                                  <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
                                     <SelectValue placeholder="Select duration" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -528,7 +628,7 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                               <FormItem>
                                 <FormLabel>Aspect Ratio</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <SelectTrigger>
+                                  <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
                                     <SelectValue placeholder="Select aspect ratio" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -539,70 +639,6 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                               </FormItem>
                             )}
                           />
-                        </AccordionContent>
-                      </AccordionItem>
-
-                      <AccordionItem value="image">
-                        <AccordionTrigger>Source Image</AccordionTrigger>
-                        <AccordionContent>
-                          <div className="space-y-4">
-                            <ScrollArea className="h-[200px]">
-                              <div className="grid grid-cols-2 gap-2 px-1">
-                                {emotes
-                                  .filter(emote => !emote.isVideo)
-                                  .slice((sourceImagePage - 1) * ITEMS_PER_PAGE, sourceImagePage * ITEMS_PER_PAGE)
-                                  .map((emote) => (
-                                    <div
-                                      key={emote.id}
-                                      className={cn(
-                                        "relative w-full h-[80px] cursor-pointer border rounded-sm overflow-hidden",
-                                        selectedEmote?.id === emote.id && "ring-2 ring-primary"
-                                      )}
-                                      onClick={() => {
-                                        setUploadedImage(null);
-                                        setSelectedEmote(emote);
-                                        setImageSource("emote");
-                                      }}
-                                    >
-                                      <img
-                                        src={emote.imageUrl!}
-                                        alt={emote.prompt || "Emote"}
-                                        className="object-cover w-full h-full"
-                                      />
-                                    </div>
-                                  ))}
-                              </div>
-                            </ScrollArea>
-                            <div className="flex justify-between items-center pt-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  setSourceImagePage(Math.max(1, sourceImagePage - 1));
-                                }}
-                                disabled={sourceImagePage === 1}
-                              >
-                                <ChevronLeft className="h-4 w-4" />
-                              </Button>
-                              <span className="text-sm font-medium">
-                                {sourceImagePage} / {Math.ceil(emotes.filter(emote => !emote.isVideo).length / ITEMS_PER_PAGE)}
-                              </span>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  setSourceImagePage(Math.min(Math.ceil(emotes.filter(emote => !emote.isVideo).length / ITEMS_PER_PAGE), sourceImagePage + 1));
-                                }}
-                                disabled={sourceImagePage === Math.ceil(emotes.filter(emote => !emote.isVideo).length / ITEMS_PER_PAGE)}
-                              >
-                                <ChevronRight className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
                         </AccordionContent>
                       </AccordionItem>
                     </Accordion>
