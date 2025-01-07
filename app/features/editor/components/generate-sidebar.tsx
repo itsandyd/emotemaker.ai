@@ -269,7 +269,11 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                       <FormItem>
                         <FormLabel>Prompt</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="A space invader" {...field} />
+                          <Textarea 
+                            placeholder="A space invader" 
+                            className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0"
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -314,7 +318,7 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                                   onValueChange={field.onChange} 
                                   defaultValue={field.value}
                                 >
-                                  <SelectTrigger className="w-full">
+                                  <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
                                     <SelectValue placeholder="Select model" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -419,7 +423,10 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                           <FormControl>
                             <Textarea 
                               placeholder="Describe how you want the image to move..."
-                              className={cn(fieldState.error && "border-destructive")}
+                              className={cn(
+                                "px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0",
+                                fieldState.error && "border-destructive"
+                              )}
                               {...field} 
                             />
                           </FormControl>

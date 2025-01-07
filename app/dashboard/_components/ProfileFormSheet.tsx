@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { useUser } from '@clerk/nextjs'
 
 const profileFormSchema = z.object({
@@ -67,98 +68,124 @@ export function ProfileFormDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Complete Your Profile</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="sm:max-w-[600px] p-8 gap-0">
+        <DialogHeader className="mb-6">
+          <DialogTitle className="text-2xl font-semibold">Complete Your Profile</DialogTitle>
+          <DialogDescription className="text-muted-foreground mt-2.5">
             Please fill out your profile information to continue. Fields marked with an asterisk (*) are required.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Your name" {...field} />
-                  </FormControl>
-                  <FormDescription>This field is required.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="bio"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Bio (optional)</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Tell us about yourself" {...field} />
-                  </FormControl>
-                  <FormDescription>Max 160 characters</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="twitch"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Twitch (optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Your Twitch username" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="youtube"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>YouTube (optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Your YouTube channel" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="instagram"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Instagram (optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Your Instagram handle" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="twitter"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Twitter (optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Your Twitter handle" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit">Save Profile</Button>
-          </form>
-        </Form>
+        <ScrollArea className="h-[60vh] pr-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Your name" 
+                        className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>This field is required.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="bio"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bio (optional)</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Tell us about yourself" 
+                        className="px-4 py-3 min-h-[100px] transition-all focus-visible:ring-2 focus-visible:ring-offset-0" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>Max 160 characters</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="twitch"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Twitch (optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Your Twitch username" 
+                        className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="youtube"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>YouTube (optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Your YouTube channel" 
+                        className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="instagram"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Instagram (optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Your Instagram handle" 
+                        className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="twitter"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Twitter (optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Your Twitter handle" 
+                        className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full">Save Profile</Button>
+            </form>
+          </Form>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   )
