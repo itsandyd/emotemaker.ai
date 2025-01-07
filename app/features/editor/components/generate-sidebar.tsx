@@ -90,6 +90,10 @@ interface EmoteGeneratorSidebarProps {
   initialTab?: "images" | "videos";
 }
 
+interface GenerationResponse {
+  imageUrl: string;
+}
+
 export const EmoteGeneratorSidebar = ({ 
   activeTool, 
   onChangeActiveTool, 
@@ -241,16 +245,28 @@ export const EmoteGeneratorSidebar = ({
           throw new Error("Invalid model selected");
         }
 
-        const response = await axios.post<string[]>(selectedModelData.apiRoute, {
+        const response = await axios.post(selectedModelData.apiRoute, {
           prompt: data.prompt,
           emoteType: data.emoteType,
           prompt_optimizer: true
         });
 
         if (response.data) {
-          // Handle both array and single URL responses
-          const urls = Array.isArray(response.data) ? response.data : [response.data];
-          setPhotos(urls);
+          // Handle both direct URL arrays and object arrays
+          const urls = Array.isArray(response.data) 
+            ? response.data.map(item => typeof item === 'string' ? item : item.imageUrl)
+            : [response.data];
+          setPhotos(urls.filter(Boolean));
+          
+          // Only try to add emotes if the response items are objects
+          if (Array.isArray(response.data) && response.data[0] && typeof response.data[0] === 'object') {
+            response.data.forEach(item => {
+              if ('id' in item && 'prompt' in item) {
+                addEmote(item as Emote);
+              }
+            });
+          }
+          
           toast.success('Images generated successfully!');
         } else {
           throw new Error("No images were generated");

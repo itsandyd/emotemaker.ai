@@ -251,12 +251,15 @@ export const Editor = ({
                   backgroundColor: '#f0f0f0',
                   left: '50%',
                   top: '50%',
-                  transform: `translate(-50%, -60%)`,
+                  transform: 'translate(-50%, -50%)',
+                  margin: '40px',
+                  zIndex: 1,
+                  position: 'relative',
                 }}
                 ref={containerRef}
               >
                 {editor?.stage && (
-                  <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute inset-0 pointer-events-none z-10">
                     <VideoControls editor={editor} />
                   </div>
                 )}
