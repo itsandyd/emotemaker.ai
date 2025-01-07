@@ -3,6 +3,7 @@ import { fal } from "@fal-ai/client";
 import { auth } from "@clerk/nextjs/server";
 import { checkApiLimit } from "@/lib/api-limit";
 import { incrementApiLimit } from "@/lib/api-limit";
+import { db } from "@/lib/db";
 
 export const maxDuration = 300;
 
@@ -13,9 +14,12 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const freeTrial = await checkApiLimit();
-    if (!freeTrial) {
-      return new NextResponse("Free trial has expired. Please upgrade to pro.", { status: 403 });
+    const userCredits = await db.user.findUnique({
+      where: { id: userId },
+    });
+  
+    if (!userCredits || userCredits.credits < 5) {
+      return new NextResponse("Insufficient credits (5 credits required)", { status: 403 });
     }
 
     const { prompt, image_url, duration = "5", aspect_ratio = "16:9" } = await req.json();
@@ -48,7 +52,15 @@ export async function POST(req: Request) {
       },
     });
 
-    await incrementApiLimit();
+    // Deduct credits after successful generation
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        credits: {
+          decrement: 5
+        }
+      }
+    });
 
     return NextResponse.json(result.data);
   } catch (error) {

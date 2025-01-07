@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     const result = await fal.subscribe("fal-ai/flux-pro/v1.1-ultra", {
       input: {
         prompt: finalPrompt,
-        aspect_ratio,
+        aspect_ratio: "1:1",
         num_images,
         enable_safety_checker: true,
         safety_tolerance: "2",
