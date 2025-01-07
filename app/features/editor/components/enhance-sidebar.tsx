@@ -149,7 +149,7 @@ export const EnhanceSidebar = ({ activeTool, onChangeActiveTool, editor }: Enhan
                 const activeObject = editor.getActiveObject();
                 if (activeObject) {
                     activeObject.destroy();
-                    editor.layer?.batchDraw();
+                    editor.layers.get('main')?.batchDraw();
                 }
 
                 // Add the enhanced image to the canvas

@@ -29,7 +29,7 @@ export const StrokeWidthSidebar = ({ activeTool, onChangeActiveTool, editor }: S
         if (editor?.selectedNode) {
             editor.selectedNode.setAttr('dash', value);
             editor.selectedNode.setAttr('dashEnabled', value.length > 0);
-            editor.layer?.batchDraw();
+            editor.layers.get('main')?.batchDraw();
         }
     }
 
