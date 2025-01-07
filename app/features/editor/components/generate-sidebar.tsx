@@ -47,7 +47,7 @@ const videoGeneration = {
       name: "Minimax Live",
       description: "Latest model optimized for creating smooth, natural motion from still images.",
       apiRoute: "/api/models/fal/minimax-video",
-      credits: 5
+      credits: 10
     },
   ] satisfies VideoModel[]
 };
@@ -460,7 +460,7 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                       </div>
                     )}
                     <Accordion type="single" collapsible>
-                      {/* <AccordionItem value="model">
+                      <AccordionItem value="model">
                         <AccordionTrigger>Video Generation Model</AccordionTrigger>
                         <AccordionContent>
                           <FormField
@@ -471,10 +471,13 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                                 <FormLabel>Model</FormLabel>
                                 <FormControl>
                                   <Select 
-                                    onValueChange={field.onChange} 
+                                    onValueChange={(value) => {
+                                      field.onChange(value);
+                                      setSelectedModel(videoGeneration.models.find(m => m.name === value) || videoGeneration.models[0]);
+                                    }} 
                                     defaultValue={field.value}
                                   >
-                                    <SelectTrigger className="w-full">
+                                    <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
                                       <SelectValue placeholder="Select model" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -494,7 +497,7 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                             )}
                           />
                         </AccordionContent>
-                      </AccordionItem> */}
+                      </AccordionItem>
 
                       <AccordionItem value="settings">
                         <AccordionTrigger>Settings</AccordionTrigger>
@@ -613,7 +616,7 @@ export const EmoteGeneratorSidebar = ({ activeTool, onChangeActiveTool, editor, 
                       {isGenerating ? (
                         <Loader className="animate-spin" />
                       ) : (
-                        `Generate Video (${videoGeneration.models.find(m => m.name === videoForm.watch("model"))?.credits || 5} Credits)`
+                        `Generate Video (${videoGeneration.models.find(m => m.name === videoForm.watch("model"))?.credits || 10} Credits)`
                       )}
                     </Button>
                   </div>
