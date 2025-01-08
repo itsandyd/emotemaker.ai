@@ -24,7 +24,7 @@ export default function PepeLanding() {
     >
       {/* Hero Section */}
       <section className="relative w-full bg-[#E8E6E3] py-16 md:py-24 lg:py-32 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#4FC25C]/20 to-[#4B9EFF]/20" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#4FC25C] to-[#4B9EFF]" />
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
             <div className="space-y-6 relative z-10">
@@ -52,7 +52,7 @@ export default function PepeLanding() {
                 <li>Perfect for Twitch & Discord</li>
               </ul>
               <div className="flex flex-col gap-4 sm:flex-row">
-                <Button onClick={handleStartCreating} className="bg-[#4FC25C] text-white hover:bg-[#45AE51] text-lg" size="lg">
+                <Button onClick={handleStartCreating} className="bg-[#ffffff] text-black hover:bg-[#45AE51] hover:text-white text-lg" size="lg">
                   Start Creating Pepe Emotes
                 </Button>
                 {/* <Button onClick={() => router.push('/showcase')} className="bg-[#4B9EFF] text-white hover:bg-[#4B9EFF]/90 text-lg" size="lg">
