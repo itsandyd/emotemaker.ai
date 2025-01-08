@@ -83,11 +83,11 @@ model User {
 
 model Emote {
   id                String        @id @default(cuid())
-  prompt            String?
-  style             String?
-  model             String?
+  prompt            String?       @db.Text
+  style             String?       @db.Text
+  model             String?       @db.Text
   imageUrl          String?       @db.Text
-  videoUrl          String? // Optional video URL
+  videoUrl          String?       @db.Text // Optional video URL
   originalCreatorId String?
   createdAt         DateTime?     @default(now())
   emoteForSale      EmoteForSale?
