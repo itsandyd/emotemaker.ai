@@ -461,7 +461,7 @@ export const EmoteGeneratorSidebar = ({
                           <div className="space-y-4">
                             {emotes.filter(emote => !emote.isVideo).length > 0 ? (
                               <>
-                                <ScrollArea className="h-[200px] border rounded-md">
+                                <ScrollArea className="h-[200px] border rounded-md pb-24">
                                   <div className="grid grid-cols-2 gap-2 p-2">
                                     {emotes
                                       .filter(emote => !emote.isVideo)
