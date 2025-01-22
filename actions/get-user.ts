@@ -15,22 +15,36 @@ async function getTag(tagName: string) {
   }
 
   try {
-    // Search for the existing tag
-    const searchResponse = await fetch(`${process.env.ACTIVECAMPAIGN_API_URL}/api/3/tags?search=${encodeURIComponent(tagName)}`, {
+    // First get all tags
+    const searchResponse = await fetch(`${process.env.ACTIVECAMPAIGN_API_URL}/api/3/tags`, {
       headers: {
         'Api-Token': process.env.ACTIVECAMPAIGN_API_KEY as string,
         'Content-Type': 'application/json',
       },
     });
 
-    const searchData = await searchResponse.json();
-    
-    // If tag exists, return its ID
-    if (searchData.tags && searchData.tags.length > 0) {
-      return searchData.tags[0].id;
+    if (!searchResponse.ok) {
+      const errorText = await searchResponse.text();
+      console.error("Failed to fetch tags:", {
+        status: searchResponse.status,
+        statusText: searchResponse.statusText,
+        response: errorText
+      });
+      return null;
     }
 
-    console.error("Tag 'Free Account' not found");
+    const searchData = await searchResponse.json();
+    console.log("All tags:", searchData);
+    
+    // Find the tag with exact name match
+    const tag = searchData.tags?.find((tag: any) => tag.tag === tagName);
+    
+    if (tag) {
+      console.log("Found tag:", tag);
+      return tag.id;
+    }
+
+    console.error(`Tag '${tagName}' not found in available tags:`, searchData.tags?.map((t: any) => ({ id: t.id, name: t.tag })));
     return null;
   } catch (error) {
     console.error("Failed to get tag:", error);
