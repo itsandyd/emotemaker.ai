@@ -10,45 +10,39 @@ export const useAutoResize = ({ stage, container }: UseAutoResizeProps) => {
     const autoZoom = useCallback(() => {
         if (!stage || !container) return;
 
-        const width = container.offsetWidth;
-        const height = container.offsetHeight;
-
-        // Update stage size
-        stage.width(width);
-        stage.height(height);
+        const containerWidth = container.offsetWidth;
+        const containerHeight = container.offsetHeight;
+        const stageWidth = 512; // Fixed stage width
+        const stageHeight = 512; // Fixed stage height
 
         // Calculate scale to fit
-        const scaleX = width / stage.width();
-        const scaleY = height / stage.height();
-        const scale = Math.min(scaleX, scaleY) * 0.85; // 0.85 is the zoom ratio
+        const scaleX = containerWidth / stageWidth;
+        const scaleY = containerHeight / stageHeight;
+        const scale = Math.min(scaleX, scaleY, 1); // Never scale up beyond original size
 
-        // Center and scale all layers
+        // Update stage size while maintaining aspect ratio
+        stage.width(stageWidth);
+        stage.height(stageHeight);
+        stage.scale({ x: scale, y: scale });
+
+        // Center the stage in the container
+        stage.x((containerWidth - stageWidth * scale) / 2);
+        stage.y((containerHeight - stageHeight * scale) / 2);
+
+        // Make sure all layers are visible
         stage.getLayers().forEach(layer => {
-            layer.scale({ x: scale, y: scale });
-            layer.position({
-                x: (width - stage.width() * scale) / 2,
-                y: (height - stage.height() * scale) / 2
-            });
+            layer.visible(true);
             layer.batchDraw();
         });
 
     }, [stage, container]);
 
     useEffect(() => {
-        let resizeObserver: ResizeObserver | null = null;
-
-        if (stage && container) { 
-            resizeObserver = new ResizeObserver(() => {
-                autoZoom();
-            });
+        if (stage && container) {
+            const resizeObserver = new ResizeObserver(autoZoom);
             resizeObserver.observe(container);
+            autoZoom(); // Initial resize
+            return () => resizeObserver.disconnect();
         }
-
-        return () => {
-            if (resizeObserver) {
-                resizeObserver.disconnect();
-            }
-        };
-
     }, [stage, container, autoZoom]);
 };

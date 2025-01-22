@@ -2,7 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { ClerkProvider } from '@clerk/nextjs'
-import { auth } from '@clerk/nextjs/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import Navbar from '@/components/Navbar'
 import { getApiLimitCount } from '@/lib/api-limit'
 import { ModalProvider } from '@/components/ModalProvider'
@@ -85,10 +85,18 @@ export default async function RootLayout({
   const isPro = await checkSubscription(userId)
   const credits = await getUserCredits()
 
+  let user = null;
   if (userId) {
-    const user = await getUser({ userId })
-  } else {
-    console.log("User ID is null, user might not be logged in.")
+    try {
+      const clerkUser = await currentUser();
+      user = await getUser({ 
+        userId,
+        name: clerkUser?.firstName || clerkUser?.username || 'Anonymous',
+        email: clerkUser?.emailAddresses[0]?.emailAddress
+      });
+    } catch (error) {
+      console.error("Failed to initialize user:", error);
+    }
   }
 
   const hasActiveSubscription = await checkSubscription(userId);

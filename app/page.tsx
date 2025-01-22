@@ -12,48 +12,6 @@ import Landing from "../components/Landing";
 import Footer from "../components/Footer";
 import { useRouter } from "next/navigation";
 
-
-
-// const demophotos = [
-//   {
-//     id: 5,
-//     image: "/asmonemote.png",
-//   },
-//   {
-//     id: 6,
-//     image: "/quinemote.png",
-//   },
-//   {
-//     id: 7,
-//     image: "/esfandemote1.png",
-//   },
-//   {
-//     id: 7,
-//     image: "/tyler1.png",
-//   },
-//   {
-//   id: 1,
-//   image: "/foxemote1.png",
-// },
-// {
-//   id: 2,
-//   image: "/elf.png",
-// },
-// {
-//   id: 3,
-//   image: "/determinedcat.png",
-// },
-// {
-//   id: 4,
-//   image: "/gamercat.png",
-// },
-
-// ]; 
-
-// interface UserProps {
-//   userId: string
-// }
-
 export default function LandingPage() {
   const [isPro, setIsPro] = useState(false);
   const router = useRouter();

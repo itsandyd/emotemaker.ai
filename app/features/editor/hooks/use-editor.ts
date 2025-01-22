@@ -1,9 +1,12 @@
 import { useCallback, useState, useMemo, useRef } from "react";
 import Konva from 'konva';
-import { KonvaEditor, WorkspaceType, VideoObject, DEFAULT_WORKSPACE_CONFIGS, DEFAULT_EDITOR_STATE, EditorState, ShapeType, KonvaTextOptions, FilterType, LayerType } from "../types";
+import { KonvaEditor, WorkspaceType, VideoObject, DEFAULT_WORKSPACE_CONFIGS, DEFAULT_EDITOR_STATE, EditorState, ShapeType, KonvaTextOptions, FilterType, LayerType, ActiveTool, AnimationConfig } from "../types";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { Emote } from "@prisma/client";
+
+// Store active tweens for each node
+const nodeTweens = new WeakMap<Konva.Node, Konva.Tween[]>();
 
 interface UseEditorProps {
   clearSelectionCallback?: () => void;
@@ -64,19 +67,37 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
   const init = useCallback((container: HTMLDivElement, workspaceType: WorkspaceType) => {
     const config = DEFAULT_WORKSPACE_CONFIGS[workspaceType];
     
+    // Create stage with fixed dimensions
     const newStage = new Konva.Stage({
       container,
-      width: config.width,
-      height: config.height
+      width: 512, // Fixed width for pixel art
+      height: 512, // Fixed height for pixel art
+      pixelRatio: 1, // Force 1:1 pixel ratio for crisp rendering
+      clipFunc: function(ctx) {
+        // Only clip the main content, not transformers
+        ctx.rect(0, 0, 512, 512);
+      }
     });
 
     // Create initial layers
     const newLayers = new Map<LayerType, Konva.Layer>();
-    const mainLayer = new Konva.Layer();
-    const emotesLayer = new Konva.Layer();
-    const shapesLayer = new Konva.Layer();
-    const textLayer = new Konva.Layer();
-    const generatedLayer = new Konva.Layer();
+    const mainLayer = new Konva.Layer({ 
+      imageSmoothingEnabled: false,
+      clipFunc: function(ctx) {
+        // Clip the content layer
+        ctx.rect(0, 0, 512, 512);
+      }
+    });
+    const emotesLayer = new Konva.Layer({ 
+      imageSmoothingEnabled: false,
+      clipFunc: function(ctx) {
+        // Clip the emotes layer
+        ctx.rect(0, 0, 512, 512);
+      }
+    });
+    const shapesLayer = new Konva.Layer({ imageSmoothingEnabled: false });
+    const textLayer = new Konva.Layer({ imageSmoothingEnabled: false });
+    const generatedLayer = new Konva.Layer({ imageSmoothingEnabled: false });
 
     // Set initial visibility
     mainLayer.visible(true);
@@ -98,27 +119,44 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     newStage.add(textLayer);
     newStage.add(generatedLayer);
 
-    // Add background to main layer
+    // Add white background to main layer
     const background = new Konva.Rect({
       x: 0,
       y: 0,
-      width: config.width,
-      height: config.height,
-      fill: config.backgroundColor,
+      width: 512,
+      height: 512,
+      fill: '#ffffff',
       name: 'background'
     });
     mainLayer.add(background);
 
-    // Add transformer to main layer
+    // Add transformer to main layer with constrained bounds
     const newTransformer = new Konva.Transformer({
       boundBoxFunc: (oldBox, newBox) => {
-        const maxWidth = config.width * 2;
-        const maxHeight = config.height * 2;
-        if (newBox.width > maxWidth || newBox.height > maxHeight) {
+        // Get the stage boundaries
+        const absPos = background.getAbsolutePosition();
+        const maxWidth = 512;
+        const maxHeight = 512;
+
+        // Check if the new box is within bounds
+        if (
+          newBox.x < absPos.x ||
+          newBox.y < absPos.y ||
+          newBox.x + newBox.width > absPos.x + maxWidth ||
+          newBox.y + newBox.height > absPos.y + maxHeight
+        ) {
           return oldBox;
         }
         return newBox;
-      }
+      },
+      // Keep transformer within canvas bounds
+      padding: 0,
+      ignoreStroke: true,
+      borderStroke: '#0096FF',
+      borderStrokeWidth: 1,
+      anchorStroke: '#0096FF',
+      anchorFill: '#fff',
+      anchorSize: 8,
     });
     mainLayer.add(newTransformer);
     transformer.current = newTransformer;
@@ -157,6 +195,36 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       }
     });
 
+    // Add drag bounds function to constrain all draggable objects
+    newStage.on('dragmove', (e) => {
+      const target = e.target;
+      if (!(target instanceof Konva.Group || target instanceof Konva.Shape || target instanceof Konva.Image)) {
+        return;
+      }
+
+      const box = target.getClientRect();
+      const absPos = background.getAbsolutePosition();
+      
+      // Constrain position within canvas bounds
+      let newX = target.x();
+      let newY = target.y();
+
+      if (box.x < absPos.x) {
+        newX += absPos.x - box.x;
+      }
+      if (box.y < absPos.y) {
+        newY += absPos.y - box.y;
+      }
+      if (box.x + box.width > absPos.x + 512) {
+        newX -= (box.x + box.width) - (absPos.x + 512);
+      }
+      if (box.y + box.height > absPos.y + 512) {
+        newY -= (box.y + box.height) - (absPos.y + 512);
+      }
+
+      target.position({ x: newX, y: newY });
+    });
+
     setStage(newStage);
     setLayers(newLayers);
     setActiveLayer(mainLayer);
@@ -185,14 +253,25 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
 
   const handleSetActiveLayer = useCallback((type: LayerType) => {
     const layer = layers.get(type);
-    if (layer && stage) {
+    if (!layer || !stage) {
+      console.warn('Layer or stage not ready');
+      return;
+    }
+
+    try {
       // Set the new active layer
       setActiveLayer(layer);
 
       // Ensure all layers are visible and drawn
       stage.getLayers().forEach(l => {
-        l.visible(true);
-        l.draw();
+        if (l) {
+          l.visible(true);
+          try {
+            l.draw();
+          } catch (e) {
+            console.warn('Layer draw failed:', e);
+          }
+        }
       });
 
       // Move the active layer to top for proper stacking
@@ -201,19 +280,117 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       // If there's a transformer, make sure it stays with its target
       if (transformer.current && transformer.current.nodes().length > 0) {
         const targetNode = transformer.current.nodes()[0];
-        const targetLayer = targetNode.getLayer();
-        if (targetLayer) {
+        const targetLayer = targetNode?.getLayer();
+        if (targetNode && targetLayer) {
           transformer.current.remove(); // Remove from current layer
           targetLayer.add(transformer.current); // Add to target's layer
           transformer.current.moveToTop();
-          targetLayer.draw();
+          try {
+            targetLayer.draw();
+          } catch (e) {
+            console.warn('Target layer draw failed:', e);
+          }
         }
       }
 
       // Final draw to ensure everything is visible
-      stage.draw();
+      try {
+        stage.draw();
+      } catch (e) {
+        console.warn('Stage draw failed:', e);
+      }
+    } catch (error) {
+      console.error('Error in setActiveLayer:', error);
     }
   }, [stage, layers]);
+
+  const addImage = useCallback(async (url: string) => {
+    if (!stage) {
+      console.error('Stage not initialized');
+      return Promise.reject('Stage not initialized');
+    }
+
+    // Always use emotes layer for images
+    const layer = layers.get('emotes') as Konva.Layer;
+    setActiveLayer(layer);
+
+    console.log('Creating new image with URL:', url);
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    
+    return new Promise<void>((resolve, reject) => {
+      image.onload = () => {
+        try {
+          console.log('Image loaded successfully');
+          const konvaImage = new Konva.Image({
+            image: image,
+            listening: true,
+            imageSmoothingEnabled: false,
+            pixelRatio: 1,
+          });
+
+          // Scale image to fit within canvas bounds
+          const maxWidth = stage.width() * 0.8;
+          const maxHeight = stage.height() * 0.8;
+          const scale = Math.min(
+            maxWidth / image.width,
+            maxHeight / image.height
+          );
+
+          // Round scale to nearest pixel for crisp rendering
+          const roundedScale = Math.round(scale * 100) / 100;
+          konvaImage.scale({ x: roundedScale, y: roundedScale });
+
+          // Center the image within the canvas
+          konvaImage.position({
+            x: Math.round((stage.width() - image.width * roundedScale) / 2),
+            y: Math.round((stage.height() - image.height * roundedScale) / 2)
+          });
+
+          // Add to layer and ensure it's visible
+          layer.add(konvaImage);
+          layer.moveToTop();
+          layer.visible(true);
+          
+          // Make draggable after adding to layer
+          konvaImage.draggable(true);
+
+          try {
+            // Draw all layers
+            stage.getLayers().forEach(l => {
+              if (l) {
+                l.visible(true);
+                l.draw();
+              }
+            });
+
+            // Select the newly added image
+            setSelectedNode(konvaImage);
+            if (transformer.current) {
+              transformer.current.nodes([konvaImage]);
+              transformer.current.moveToTop();
+            }
+
+            saveToHistory();
+            console.log('Image added to canvas successfully');
+            resolve();
+          } catch (e) {
+            console.warn('Error drawing layers:', e);
+            resolve(); // Still resolve since the image was added
+          }
+        } catch (error) {
+          console.error('Error adding image to canvas:', error);
+          reject(error);
+        }
+      };
+      image.onerror = (error) => {
+        console.error('Error loading image:', error);
+        reject(new Error('Failed to load image'));
+      };
+      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`;
+      image.src = proxyUrl;
+    });
+  }, [stage, layers, setSelectedNode, saveToHistory]);
 
   const editor: KonvaEditor = useMemo(() => ({
     stage,
@@ -229,75 +406,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     getLayer,
     setSelectedNode,
 
-    addImage: async (url: string) => {
-      if (!activeLayer || !stage) {
-        console.error('No layer or stage available');
-        return Promise.reject('No layer or stage');
-      }
-
-      console.log('Creating new image with URL:', url);
-      const image = new Image();
-      image.crossOrigin = 'anonymous';
-      
-      return new Promise<void>((resolve, reject) => {
-        image.onload = () => {
-          try {
-            console.log('Image loaded successfully');
-            const konvaImage = new Konva.Image({
-              image: image,
-              draggable: true,
-              x: stage.width() / 2,
-              y: stage.height() / 2,
-              listening: true // Ensure the image can receive events
-            });
-
-            // Scale image to fit workspace while maintaining aspect ratio
-            const scale = Math.min(
-              stage.width() / image.width,
-              stage.height() / image.height
-            ) * 0.8;
-
-            konvaImage.scale({ x: scale, y: scale });
-            konvaImage.position({
-              x: (stage.width() - image.width * scale) / 2,
-              y: (stage.height() - image.height * scale) / 2
-            });
-
-            // Add to layer and ensure it's visible
-            activeLayer.add(konvaImage);
-            activeLayer.moveToTop();
-            activeLayer.visible(true);
-            
-            // Draw all layers to ensure everything is visible
-            stage.getLayers().forEach(layer => {
-              layer.visible(true);
-              layer.draw();
-            });
-
-            // Select the newly added image
-            setSelectedNode(konvaImage);
-            if (transformer.current) {
-              transformer.current.nodes([konvaImage]);
-              transformer.current.moveToTop();
-            }
-
-            saveToHistory();
-            console.log('Image added to canvas successfully');
-            resolve();
-          } catch (error) {
-            console.error('Error adding image to canvas:', error);
-            reject(error);
-          }
-        };
-        image.onerror = (error) => {
-          console.error('Error loading image:', error);
-          reject(new Error('Failed to load image'));
-        };
-        // Use the proxy route to avoid CORS issues
-        const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`;
-        image.src = proxyUrl;
-      });
-    },
+    addImage,
 
     addVideo: async (url: string) => {
       if (!activeLayer || !stage) {
@@ -1181,6 +1290,131 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
 
       const video = selectedNode.getVideoElement();
       return video.src;
+    },
+
+    setAnimation: (node: Konva.Node, animation: AnimationConfig | null) => {
+      if (!node) return;
+
+      // Stop any existing animations
+      const existingTweens = nodeTweens.get(node) || [];
+      existingTweens.forEach(tween => tween.destroy());
+      nodeTweens.set(node, []);
+      node.clearCache();
+
+      if (!animation) {
+        node.setAttr('animation', null);
+        return;
+      }
+
+      node.setAttr('animation', animation);
+      
+      // Apply the animation
+      const duration = 2 / animation.speed;
+      const newTweens: Konva.Tween[] = [];
+
+      switch (animation.type) {
+        case 'shake': {
+          const tween = new Konva.Tween({
+            node,
+            duration,
+            x: node.x() + 10,
+            yoyo: true,
+            repeat: -1,
+          });
+          newTweens.push(tween);
+          tween.play();
+          break;
+        }
+        case 'spin': {
+          const tween = new Konva.Tween({
+            node,
+            duration,
+            rotation: 360,
+            repeat: -1,
+          });
+          newTweens.push(tween);
+          tween.play();
+          break;
+        }
+        case 'bounce': {
+          const tween = new Konva.Tween({
+            node,
+            duration,
+            y: node.y() - 20,
+            yoyo: true,
+            repeat: -1,
+          });
+          newTweens.push(tween);
+          tween.play();
+          break;
+        }
+        case 'zoom': {
+          const tween = new Konva.Tween({
+            node,
+            duration,
+            scaleX: node.scaleX() * 1.2,
+            scaleY: node.scaleY() * 1.2,
+            yoyo: true,
+            repeat: -1,
+          });
+          newTweens.push(tween);
+          tween.play();
+          break;
+        }
+        case 'slide': {
+          const tween = new Konva.Tween({
+            node,
+            duration,
+            x: node.x() + 40,
+            yoyo: true,
+            repeat: -1,
+          });
+          newTweens.push(tween);
+          tween.play();
+          break;
+        }
+        case 'flip': {
+          const tween = new Konva.Tween({
+            node,
+            duration,
+            scaleX: -node.scaleX(),
+            yoyo: true,
+            repeat: -1,
+          });
+          newTweens.push(tween);
+          tween.play();
+          break;
+        }
+        case 'pet':
+          // Pet animation is handled separately with an overlay
+          break;
+      }
+
+      // Store the new tweens
+      nodeTweens.set(node, newTweens);
+      activeLayer?.batchDraw();
+    },
+
+    stopAnimation: (node: Konva.Node) => {
+      if (!node) return;
+      const tweens = nodeTweens.get(node) || [];
+      tweens.forEach(tween => tween.destroy());
+      nodeTweens.set(node, []);
+      node.clearCache();
+      activeLayer?.batchDraw();
+    },
+
+    getAnimation: (node: Konva.Node) => {
+      if (!node) return null;
+      return node.getAttr('animation');
+    },
+
+    playAnimation: (node: Konva.Node) => {
+      if (!node) return;
+      const animation = node.getAttr('animation');
+      if (animation) {
+        editor.setAnimation(node, animation);
+      }
     },
   }), [
     stage, 

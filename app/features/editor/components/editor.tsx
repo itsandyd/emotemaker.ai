@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useEditor } from "../hooks/use-editor"
+import { useAutoResize } from "../hooks/use-auto-resize"
+import { useCanvasEvents } from "../hooks/use-canvas-events"
 import { Navbar } from "./navbar"
 import { Sidebar } from "./sidebar"
 import { Toolbar } from "./toolbar"
@@ -22,8 +24,6 @@ import { DrawSidebar } from "./draw-sidebar"
 import { InpaintSidebar } from "./inpaint-sidebar"
 import { VideoSidebar } from "./video-sidebar"
 import { VideoControls } from './video-controls'
-import { DEFAULT_WORKSPACE_CONFIGS } from "../types"
-import Konva from 'konva';
 
 interface EditorProps {
   userId: string;
@@ -40,7 +40,6 @@ export const Editor = ({
   const [emotes, setEmotes] = useState<Emote[]>(initialEmotes)
   const [currentPrompt, setCurrentPrompt] = useState<string>("")
   const [isEditorReady, setIsEditorReady] = useState(false)
-  const [zoomLevel, setZoomLevel] = useState(1)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const onClearSelection = useCallback(() => {
@@ -48,7 +47,7 @@ export const Editor = ({
       // Don't clear selection when clicking outside
       // setActiveTool("select");
     }
-  }, []);
+  }, [activeTool]);
 
   const { editor, init } = useEditor({
     clearSelectionCallback: onClearSelection
@@ -62,67 +61,17 @@ export const Editor = ({
     }
   }, [init, initialWorkspaceType, editor?.stage]);
 
-  // Handle stage click events
-  useEffect(() => {
-    const stage = editor?.stage;
-    if (!stage) return;
+  // Setup auto-resize
+  useAutoResize({
+    stage: editor?.stage || null,
+    container: containerRef.current
+  });
 
-    const clickHandler = (e: any) => {
-      // Prevent deselection when clicking the stage background
-      if (e.target === stage) {
-        e.cancelBubble = true;
-      }
-    };
-    
-    stage.on('click', clickHandler);
-    return () => {
-      stage.off('click', clickHandler);
-    };
-  }, [editor]);
-
-  // Handle zoom and resize
-  useEffect(() => {
-    if (!editor?.stage || !isEditorReady || !containerRef.current) return;
-    
-    const handleResize = () => {
-      if (!containerRef.current || !editor.stage) return;
-      
-      const containerWidth = containerRef.current.clientWidth;
-      const containerHeight = containerRef.current.clientHeight;
-      
-      // Calculate the maximum scale that fits within the container
-      const scaleX = containerWidth / DEFAULT_WORKSPACE_CONFIGS[initialWorkspaceType].width;
-      const scaleY = containerHeight / DEFAULT_WORKSPACE_CONFIGS[initialWorkspaceType].height;
-      const scale = Math.min(scaleX, scaleY, 1); // Never scale up beyond original size
-      
-      setZoomLevel(scale);
-
-      const stage = editor.stage;
-      // Update stage size to maintain aspect ratio
-      stage.width(DEFAULT_WORKSPACE_CONFIGS[initialWorkspaceType].width);
-      stage.height(DEFAULT_WORKSPACE_CONFIGS[initialWorkspaceType].height);
-      stage.scale({ x: scale, y: scale });
-
-      // Center the stage in the container
-      stage.x((containerWidth - DEFAULT_WORKSPACE_CONFIGS[initialWorkspaceType].width * scale) / 2);
-      stage.y((containerHeight - DEFAULT_WORKSPACE_CONFIGS[initialWorkspaceType].height * scale) / 2);
-
-      // Make sure all layers are visible and drawn
-      editor.layers.forEach(layer => {
-        layer.show();
-        layer.batchDraw();
-      });
-    }
-
-    handleResize();
-    
-    const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(containerRef.current);
-
-    return () => {
-      resizeObserver.disconnect();
-    }
-  }, [isEditorReady, editor?.stage, editor?.layers, initialWorkspaceType]);
+  // Setup canvas events
+  useCanvasEvents({
+    stage: editor?.stage || null,
+    editor
+  });
 
   const onChangeActiveTool = useCallback((tool: ActiveTool) => {
     if (tool === "draw") {
@@ -234,30 +183,27 @@ export const Editor = ({
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-          <main className="flex-1 flex flex-col overflow-hidden bg-slate-200">
-            <Toolbar 
-              editor={editor}
-              activeTool={activeTool}
-              onChangeActiveTool={onChangeActiveTool}
-              addEmote={addEmote}
-              currentPrompt={currentPrompt}
-            />
-            <div className="flex-1 relative">
-              <div 
-                className="absolute inset-0"
-                style={{
-                  width: 500,
-                  height: 500,
-                  backgroundColor: '#f0f0f0',
-                  left: '50%',
-                  top: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  margin: '40px',
-                  zIndex: 1,
-                  position: 'relative',
-                }}
+        <main className="flex-1 flex flex-col overflow-hidden">
+          <Toolbar 
+            editor={editor}
+            activeTool={activeTool}
+            onChangeActiveTool={onChangeActiveTool}
+            addEmote={addEmote}
+            currentPrompt={currentPrompt}
+          />
+          <div className="flex-1 relative bg-neutral-100">
+            <div 
+              className="absolute inset-0 flex items-center justify-center"
+            >
+              <div
                 ref={containerRef}
+                className="relative"
+                style={{
+                  width: '512px',  // Match the stage size from use-editor.ts
+                  height: '512px', // Match the stage size from use-editor.ts
+                }}
               >
+                <div className="absolute inset-0 bg-white" />
                 {editor?.stage && (
                   <div className="absolute inset-0 pointer-events-none z-10">
                     <VideoControls editor={editor} />
@@ -265,8 +211,9 @@ export const Editor = ({
                 )}
               </div>
             </div>
-            <Footer />
-          </main>
+          </div>
+          <Footer />
+        </main>
       </div>
     </div>
   )

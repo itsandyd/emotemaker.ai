@@ -1,6 +1,6 @@
 "use client"
 
-import { MousePointer2, Pencil, Eraser, Type, Square, Smile, Wand2, Sliders } from "lucide-react";
+import { MousePointer2, Pencil, Eraser, Type, Square, Smile, Wand2, Sliders, Play } from "lucide-react";
 import { ActiveTool, WorkspaceType } from "../types";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/hint";
@@ -101,6 +101,16 @@ export const Sidebar = ({
             className={cn(activeTool === "filter" && "bg-gray-100")}
           >
             <Sliders className="size-5" />
+          </Button>
+        </Hint>
+        <Hint label="Animate" side="right" sideOffset={10}>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => onChangeActiveTool("animate")}
+            className={cn(activeTool === "animate" && "bg-gray-100")}
+          >
+            <Play className="size-5" />
           </Button>
         </Hint>
       </div>

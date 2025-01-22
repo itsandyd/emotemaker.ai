@@ -22,7 +22,8 @@ export type ActiveTool =
   | "filter"
   | "enhance"
   | "inpaint"
-  | "images";
+  | "images"
+  | "animate";
 
 export type ShapeType = 'rectangle' | 'circle' | 'triangle' | 'diamond' | 'inverseTriangle';
 
@@ -63,6 +64,7 @@ export const colors = [
 
 export interface KonvaNode extends Konva.Node {
   videoObject?: VideoObject;
+  animation?: AnimationConfig;
 }
 
 export interface VideoObject extends Konva.Group {
@@ -432,6 +434,11 @@ export interface KonvaEditor {
   getVideoDuration: () => number;
   downloadTrimmedVideo: () => Promise<void>;
   getTrimmedVideoUrl: () => Promise<string>;
+  // Add animation types
+  setAnimation: (node: Konva.Node, animation: AnimationConfig | null) => void;
+  getAnimation: (node: Konva.Node) => AnimationConfig | null;
+  playAnimation: (node: Konva.Node) => void;
+  stopAnimation: (node: Konva.Node) => void;
 }
 
 export interface KonvaTextOptions {
@@ -695,4 +702,15 @@ export interface VideoEditor {
   off: (event: string, callback: () => void) => void;
   trigger: (event: string) => void;
   destroy: () => void;
+}
+
+// Add animation types
+export type AnimationType = 'none' | 'shake' | 'spin' | 'bounce' | 'zoom' | 'slide' | 'flip' | 'pet';
+
+export interface AnimationConfig {
+  type: AnimationType;
+  speed: number;
+  handX?: number;
+  handY?: number;
+  patDistance?: number;
 }

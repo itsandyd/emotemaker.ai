@@ -79,9 +79,35 @@ export const EmoteSidebar = ({ activeTool, onChangeActiveTool, editor, emotes = 
 
             editor.setActiveLayer('emotes');
             if (emote.isVideo) {
-                await editor.addVideo(emote.imageUrl as string);
+                const video = await editor.addVideo(emote.imageUrl as string);
+                const stage = editor.stage;
+                if (stage) {
+                    video.position({
+                        x: stage.width() / 2,
+                        y: stage.height() / 2
+                    });
+                    video.offsetX(video.width() / 2);
+                    video.offsetY(video.height() / 2);
+                    video.draggable(true);
+                }
             } else {
-                await editor.addImage(emote.imageUrl as string);
+                await editor.addImage(emote.imageUrl as string).then(() => {
+                    const stage = editor.stage;
+                    const layer = editor.getLayer('emotes');
+                    if (stage && layer) {
+                        const lastNode = layer.children[layer.children.length - 1];
+                        if (lastNode) {
+                            lastNode.position({
+                                x: stage.width() / 2,
+                                y: stage.height() / 2
+                            });
+                            lastNode.offsetX(lastNode.width() / 2);
+                            lastNode.offsetY(lastNode.height() / 2);
+                            lastNode.draggable(true);
+                            layer.batchDraw();
+                        }
+                    }
+                });
             }
 
             toast.success('Added to canvas');
