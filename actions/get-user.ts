@@ -55,8 +55,7 @@ async function addToActiveCampaign(name: string, email: string) {
       body: JSON.stringify({
         contact: {
           email,
-          firstName: name,
-          listid: process.env.ACTIVECAMPAIGN_LIST_ID
+          firstName: name
         }
       })
     });
@@ -74,6 +73,32 @@ async function addToActiveCampaign(name: string, email: string) {
     const contactData = await createResponse.json();
     console.log("Contact created:", contactData);
     const contactId = contactData.contact.id;
+
+    // Add contact to list
+    const listResponse = await fetch(`${process.env.ACTIVECAMPAIGN_API_URL}/api/3/contactLists`, {
+      method: 'POST',
+      headers: {
+        'Api-Token': process.env.ACTIVECAMPAIGN_API_KEY as string,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contactList: {
+          list: process.env.ACTIVECAMPAIGN_LIST_ID,
+          contact: contactId,
+          status: 1
+        }
+      })
+    });
+
+    if (!listResponse.ok) {
+      const errorText = await listResponse.text();
+      console.error("Failed to add contact to list:", {
+        status: listResponse.status,
+        statusText: listResponse.statusText,
+        response: errorText
+      });
+      throw new Error(`Failed to add contact to list: ${errorText}`);
+    }
 
     // Get the existing Free Account tag
     const tagId = await getTag('Free Account');
@@ -106,7 +131,7 @@ async function addToActiveCampaign(name: string, email: string) {
       throw new Error(`Failed to add tag: ${errorText}`);
     }
 
-    console.log("User added to ActiveCampaign with Free Account tag");
+    console.log("User added to ActiveCampaign with Free Account tag and list subscription");
   } catch (error) {
     console.error("Failed to add user to ActiveCampaign:", error);
     // Don't throw the error - we want to continue with user creation even if ActiveCampaign fails
