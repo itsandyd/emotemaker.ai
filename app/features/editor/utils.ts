@@ -140,5 +140,5 @@ export const generateThemedEmotePrompt = (prompt: string, theme: string) => {
             additionalDetails = 'The design should be visually appealing and recognizable at a small scale.';
     }
 
-    return `Design a single, expressive digital emote ${styleDescription}, suitable for use on a Twitch streamer's channel. The emote should depict ${prompt}, ensuring visibility and impact at a small scale. It should feature exaggerated characteristics appropriate for ${prompt}, conveying a specific emotion or reaction. ${additionalDetails} The background should be transparent for seamless integration into various Twitch chat backgrounds, or have a solid white background if transparency is not available. The emote should be part of a cohesive set that could be expanded with additional designs.`;
+    return `Design a single, expressive digital emote ${styleDescription}, suitable for use on a Twitch streamer's channel. The emote should depict ${prompt}, ensuring visibility and impact at a small scale. It should feature exaggerated characteristics appropriate for ${prompt}, conveying a specific emotion or reaction. ${additionalDetails} with a solid white background.`;
 }

@@ -178,17 +178,27 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     const handleResize = () => {
       const containerWidth = container.offsetWidth;
       const containerHeight = container.offsetHeight;
-      const scale = Math.min(containerWidth / stageSize, containerHeight / stageSize);
+      
+      // Calculate available space considering padding
+      const availableWidth = Math.min(containerWidth, window.innerWidth - 32); // 2rem (32px) padding
+      const availableHeight = Math.min(containerHeight, window.innerWidth - 32);
+      
+      // Use the smaller dimension to maintain square aspect ratio
+      const size = Math.min(availableWidth, availableHeight, stageSize);
       
       // Update stage size
-      newStage.width(stageSize);
-      newStage.height(stageSize);
+      newStage.width(size);
+      newStage.height(size);
+      
+      // Scale stage to fit container while maintaining aspect ratio
+      const scale = size / stageSize;
+      newStage.scale({ x: scale, y: scale });
       
       // Update container size to match stage
-      container.style.width = `${stageSize}px`;
-      container.style.height = `${stageSize}px`;
+      container.style.width = `${size}px`;
+      container.style.height = `${size}px`;
       
-      // Center the container if needed
+      // Center the container
       container.style.margin = 'auto';
       
       newStage.draw();

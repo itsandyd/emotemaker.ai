@@ -24,6 +24,7 @@ import { DrawSidebar } from "./draw-sidebar"
 import { InpaintSidebar } from "./inpaint-sidebar"
 import { VideoSidebar } from "./video-sidebar"
 import { VideoControls } from './video-controls'
+import { AnimationSidebar } from './animation-sidebar'
 import Konva from 'konva'
 
 interface EditorProps {
@@ -184,6 +185,11 @@ export const Editor = ({
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
+        <AnimationSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
         <main className="flex-1 flex flex-col overflow-hidden">
           <Toolbar 
             editor={editor}
@@ -194,7 +200,7 @@ export const Editor = ({
           />
           <div className="flex-1 bg-muted relative overflow-auto">
             <div 
-              className="flex items-center justify-center min-h-full p-4 md:p-0"
+              className="flex items-center justify-center min-h-full p-4"
               onClick={(e) => {
                 // Only clear if clicking the wrapper div directly
                 if (e.target === e.currentTarget && editor?.selectedNode) {
@@ -213,7 +219,11 @@ export const Editor = ({
             >
               <div 
                 ref={containerRef} 
-                className="w-[512px] h-[512px] bg-white"
+                className="w-[512px] h-[512px] bg-white shadow-lg"
+                style={{
+                  maxWidth: 'calc(100vw - 2rem)',
+                  maxHeight: 'calc(100vw - 2rem)'
+                }}
               >
                 {/* Konva stage will be rendered here */}
               </div>
