@@ -461,22 +461,13 @@ export interface EditorState {
 
 export const DEFAULT_WORKSPACE_CONFIGS = {
   image: {
-    width: typeof window !== 'undefined' 
-      ? Math.min(800, Math.min(window.innerWidth * 0.6, window.innerHeight * 0.6))
-      : 800,
-    height: typeof window !== 'undefined'
-      ? Math.min(800, Math.min(window.innerWidth * 0.6, window.innerHeight * 0.6))
-      : 800,
-      
+    width: 0,
+    height: 0,
     backgroundColor: '#ffffff'
   },
   video: {
-    width: typeof window !== 'undefined'
-      ? Math.min(800, Math.min(window.innerWidth * 0.6, window.innerHeight * 0.6))
-      : 800,
-    height: typeof window !== 'undefined'
-      ? Math.min(800, Math.min(window.innerWidth * 0.6, window.innerHeight * 0.6))
-      : 800,
+    width: 0,
+    height: 0,
     backgroundColor: '#000000'
   }
 } as const;

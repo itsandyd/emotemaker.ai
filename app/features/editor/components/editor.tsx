@@ -24,6 +24,7 @@ import { DrawSidebar } from "./draw-sidebar"
 import { InpaintSidebar } from "./inpaint-sidebar"
 import { VideoSidebar } from "./video-sidebar"
 import { VideoControls } from './video-controls'
+import Konva from 'konva'
 
 interface EditorProps {
   userId: string;
@@ -191,24 +192,30 @@ export const Editor = ({
             addEmote={addEmote}
             currentPrompt={currentPrompt}
           />
-          <div className="flex-1 relative bg-neutral-100">
+          <div className="flex-1 bg-muted relative overflow-auto">
             <div 
-              className="absolute inset-0 flex items-center justify-center"
+              className="flex items-center justify-center min-h-full p-4 md:p-0"
+              onClick={(e) => {
+                // Only clear if clicking the wrapper div directly
+                if (e.target === e.currentTarget && editor?.selectedNode) {
+                  editor.setSelectedNode(null);
+                  const transformers = editor.stage?.find('Transformer');
+                  if (transformers?.length) {
+                    transformers.forEach(transformer => {
+                      if (transformer instanceof Konva.Transformer) {
+                        transformer.nodes([]);
+                        transformer.getLayer()?.batchDraw();
+                      }
+                    });
+                  }
+                }
+              }}
             >
-              <div
-                ref={containerRef}
-                className="relative"
-                style={{
-                  width: '512px',  // Match the stage size from use-editor.ts
-                  height: '512px', // Match the stage size from use-editor.ts
-                }}
+              <div 
+                ref={containerRef} 
+                className="w-[512px] h-[512px] bg-white"
               >
-                <div className="absolute inset-0 bg-white" />
-                {editor?.stage && (
-                  <div className="absolute inset-0 pointer-events-none z-10">
-                    <VideoControls editor={editor} />
-                  </div>
-                )}
+                {/* Konva stage will be rendered here */}
               </div>
             </div>
           </div>

@@ -65,91 +65,89 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
   }, [activeLayer]);
 
   const init = useCallback((container: HTMLDivElement, workspaceType: WorkspaceType) => {
-    const config = DEFAULT_WORKSPACE_CONFIGS[workspaceType];
+    // Set fixed size for stage (512x512)
+    const stageSize = 512;
     
-    // Create stage with fixed dimensions
     const newStage = new Konva.Stage({
       container,
-      width: 512, // Fixed width for pixel art
-      height: 512, // Fixed height for pixel art
-      pixelRatio: 1, // Force 1:1 pixel ratio for crisp rendering
-      clipFunc: function(ctx) {
-        // Only clip the main content, not transformers
-        ctx.rect(0, 0, 512, 512);
-      }
+      width: stageSize,
+      height: stageSize,
+      // Explicitly set pixelRatio to 1 to match canvas and CSS dimensions
+      pixelRatio: 1
     });
 
-    // Create initial layers
+    // Create workspace/background - same size as stage
+    const workspace = new Konva.Rect({
+      width: stageSize,
+      height: stageSize,
+      fill: '#ffffff',
+      name: 'workspace',
+      // Remove shadow effects as they can cause rendering artifacts
+      shadowColor: 'rgba(0,0,0,0)',
+      shadowBlur: 0,
+      shadowOffsetX: 0,
+      shadowOffsetY: 0,
+    });
+
+    // Create all necessary layers
     const newLayers = new Map<LayerType, Konva.Layer>();
-    const mainLayer = new Konva.Layer({ 
+    const mainLayer = new Konva.Layer({
+      // Set layer-specific options
       imageSmoothingEnabled: false,
-      clipFunc: function(ctx) {
-        // Clip the content layer
-        ctx.rect(0, 0, 512, 512);
-      }
+      pixelRatio: 1
     });
-    const emotesLayer = new Konva.Layer({ 
+    const emotesLayer = new Konva.Layer({
       imageSmoothingEnabled: false,
-      clipFunc: function(ctx) {
-        // Clip the emotes layer
-        ctx.rect(0, 0, 512, 512);
-      }
+      pixelRatio: 1
     });
-    const shapesLayer = new Konva.Layer({ imageSmoothingEnabled: false });
-    const textLayer = new Konva.Layer({ imageSmoothingEnabled: false });
-    const generatedLayer = new Konva.Layer({ imageSmoothingEnabled: false });
+    const shapesLayer = new Konva.Layer({
+      imageSmoothingEnabled: false,
+      pixelRatio: 1
+    });
+    const textLayer = new Konva.Layer({
+      imageSmoothingEnabled: false,
+      pixelRatio: 1
+    });
+    const generatedLayer = new Konva.Layer({
+      imageSmoothingEnabled: false,
+      pixelRatio: 1
+    });
 
-    // Set initial visibility
-    mainLayer.visible(true);
-    emotesLayer.visible(true);
-    shapesLayer.visible(true);
-    textLayer.visible(true);
-    generatedLayer.visible(true);
-
-    newLayers.set('main', mainLayer);
-    newLayers.set('emotes', emotesLayer);
-    newLayers.set('shapes', shapesLayer);
-    newLayers.set('text', textLayer);
-    newLayers.set('generated', generatedLayer);
-
-    // Add all layers to stage
+    // Add layers to stage
     newStage.add(mainLayer);
     newStage.add(emotesLayer);
     newStage.add(shapesLayer);
     newStage.add(textLayer);
     newStage.add(generatedLayer);
 
-    // Add white background to main layer
-    const background = new Konva.Rect({
-      x: 0,
-      y: 0,
-      width: 512,
-      height: 512,
-      fill: '#ffffff',
-      name: 'background'
-    });
-    mainLayer.add(background);
+    // Store layers in map
+    newLayers.set('main', mainLayer);
+    newLayers.set('emotes', emotesLayer);
+    newLayers.set('shapes', shapesLayer);
+    newLayers.set('text', textLayer);
+    newLayers.set('generated', generatedLayer);
 
-    // Add transformer to main layer with constrained bounds
+    // Add workspace to main layer
+    mainLayer.add(workspace);
+    workspace.position({
+      x: 0,
+      y: 0
+    });
+
+    // Add transformer
     const newTransformer = new Konva.Transformer({
       boundBoxFunc: (oldBox, newBox) => {
-        // Get the stage boundaries
-        const absPos = background.getAbsolutePosition();
-        const maxWidth = 512;
-        const maxHeight = 512;
-
-        // Check if the new box is within bounds
+        // Keep within workspace bounds
         if (
-          newBox.x < absPos.x ||
-          newBox.y < absPos.y ||
-          newBox.x + newBox.width > absPos.x + maxWidth ||
-          newBox.y + newBox.height > absPos.y + maxHeight
+          newBox.x < 0 ||
+          newBox.y < 0 ||
+          newBox.x + newBox.width > stageSize ||
+          newBox.y + newBox.height > stageSize
         ) {
           return oldBox;
         }
         return newBox;
       },
-      // Keep transformer within canvas bounds
       padding: 0,
       ignoreStroke: true,
       borderStroke: '#0096FF',
@@ -157,20 +155,60 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       anchorStroke: '#0096FF',
       anchorFill: '#fff',
       anchorSize: 8,
+      enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
+      rotateEnabled: true,
+      keepRatio: true,
+      centeredScaling: false,
     });
-    mainLayer.add(newTransformer);
+
+    // Add transformer to emotes layer instead of main layer
+    // emotesLayer.add(newTransformer);
     transformer.current = newTransformer;
+
+    // Setup clipping for all layers to stay within workspace
+    const clipFunc = (ctx: CanvasRenderingContext2D) => {
+      ctx.rect(0, 0, stageSize, stageSize);
+    };
+
+    [emotesLayer, shapesLayer, textLayer, generatedLayer].forEach(layer => {
+      layer.clipFunc(clipFunc);
+    });
+
+    // Update resize handler to maintain square aspect ratio for both stage and workspace
+    const handleResize = () => {
+      const containerWidth = container.offsetWidth;
+      const containerHeight = container.offsetHeight;
+      const scale = Math.min(containerWidth / stageSize, containerHeight / stageSize);
+      
+      // Update stage size
+      newStage.width(stageSize);
+      newStage.height(stageSize);
+      
+      // Update container size to match stage
+      container.style.width = `${stageSize}px`;
+      container.style.height = `${stageSize}px`;
+      
+      // Center the container if needed
+      container.style.margin = 'auto';
+      
+      newStage.draw();
+    };
+
+    // Initial resize
+    handleResize();
+    window.addEventListener('resize', handleResize);
 
     // Setup event listeners
     newStage.on('click tap', (e) => {
       const target = e.target;
-      const isBackground = target === background || target === newStage;
+      const isWorkspace = target === workspace || target === newStage;
       const isTransformer = transformer.current && (target as any).getClassName?.() === 'Transformer';
 
-      if (isBackground) {
+      if (isWorkspace) {
         setSelectedNode(null);
         if (transformer.current) {
-          (transformer.current as any).nodes([]);
+          transformer.current.nodes([]);
+          transformer.current.remove(); // Remove from layer
         }
         clearSelectionCallback?.();
         return;
@@ -178,62 +216,27 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
 
       if (isTransformer) return;
 
-      if (target instanceof Konva.Image && target.parent?.getAttr('objectType') === 'video') {
-        const videoGroup = target.parent;
-        setSelectedNode(videoGroup);
-        if (transformer.current) {
-          (transformer.current as any).nodes([videoGroup]);
-        }
-        return;
-      }
-
       if (target instanceof Konva.Group || target instanceof Konva.Shape || target instanceof Konva.Image) {
         setSelectedNode(target);
         if (transformer.current) {
-          (transformer.current as any).nodes([target]);
+          // Remove from previous layer if exists
+          transformer.current.remove();
+          // Add to target's layer
+          target.getLayer()?.add(transformer.current);
+          transformer.current.nodes([target]);
+          transformer.current.moveToTop();
+          target.getLayer()?.batchDraw();
         }
       }
-    });
-
-    // Add drag bounds function to constrain all draggable objects
-    newStage.on('dragmove', (e) => {
-      const target = e.target;
-      if (!(target instanceof Konva.Group || target instanceof Konva.Shape || target instanceof Konva.Image)) {
-        return;
-      }
-
-      const box = target.getClientRect();
-      const absPos = background.getAbsolutePosition();
-      
-      // Constrain position within canvas bounds
-      let newX = target.x();
-      let newY = target.y();
-
-      if (box.x < absPos.x) {
-        newX += absPos.x - box.x;
-      }
-      if (box.y < absPos.y) {
-        newY += absPos.y - box.y;
-      }
-      if (box.x + box.width > absPos.x + 512) {
-        newX -= (box.x + box.width) - (absPos.x + 512);
-      }
-      if (box.y + box.height > absPos.y + 512) {
-        newY -= (box.y + box.height) - (absPos.y + 512);
-      }
-
-      target.position({ x: newX, y: newY });
     });
 
     setStage(newStage);
     setLayers(newLayers);
-    setActiveLayer(mainLayer);
+    setActiveLayer(emotesLayer); // Set emotes layer as active by default
 
-    // Ensure all layers are visible after initialization
-    newLayers.forEach(layer => {
-      layer.visible(true);
-      layer.draw();
-    });
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, [clearSelectionCallback]);
 
   const addLayer = useCallback((type: LayerType): Konva.Layer => {
@@ -329,22 +332,27 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
             pixelRatio: 1,
           });
 
-          // Scale image to fit within canvas bounds
-          const maxWidth = stage.width() * 0.8;
-          const maxHeight = stage.height() * 0.8;
+          // Get workspace dimensions
+          const workspace = stage.findOne('.workspace') as Konva.Rect;
+          const workspacePos = workspace.getAbsolutePosition();
+          const workspaceWidth = workspace.width();
+          const workspaceHeight = workspace.height();
+
+          // Calculate scale to fit within workspace (using 30% of workspace size for emotes)
+          const targetSize = Math.min(workspaceWidth, workspaceHeight) * 0.3;
           const scale = Math.min(
-            maxWidth / image.width,
-            maxHeight / image.height
+            targetSize / image.width,
+            targetSize / image.height
           );
 
           // Round scale to nearest pixel for crisp rendering
           const roundedScale = Math.round(scale * 100) / 100;
           konvaImage.scale({ x: roundedScale, y: roundedScale });
 
-          // Center the image within the canvas
+          // Center the image within the workspace
           konvaImage.position({
-            x: Math.round((stage.width() - image.width * roundedScale) / 2),
-            y: Math.round((stage.height() - image.height * roundedScale) / 2)
+            x: workspacePos.x + (workspaceWidth - image.width * roundedScale) / 2,
+            y: workspacePos.y + (workspaceHeight - image.height * roundedScale) / 2
           });
 
           // Add to layer and ensure it's visible
@@ -643,7 +651,32 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
 
     download: () => {
       if (!stage) return;
+      
+      // Store current transformer state
+      const currentTransformers = stage.find('Transformer');
+      const transformerStates = currentTransformers.map(tr => ({
+        transformer: tr,
+        visible: tr.visible(),
+        nodes: (tr as Konva.Transformer).nodes()
+      }));
+
+      // Hide all transformers
+      currentTransformers.forEach(tr => tr.hide());
+      stage.batchDraw();
+
+      // Create dataURL
       const dataURL = stage.toDataURL();
+
+      // Restore transformer state
+      transformerStates.forEach(state => {
+        state.transformer.show();
+        if (state.transformer instanceof Konva.Transformer) {
+          state.transformer.nodes(state.nodes);
+        }
+      });
+      stage.batchDraw();
+
+      // Download the image
       const link = document.createElement('a');
       link.download = 'canvas.png';
       link.href = dataURL;
