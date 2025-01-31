@@ -146,11 +146,9 @@ export const EmoteGeneratorSidebar = ({
   });
 
   const handleSelectEnhancedPrompt = (selectedPrompt: string) => {
-    if (currentTab === "videos") {
-      videoForm.setValue("prompt", selectedPrompt);
-    } else {
-      imageForm.setValue("prompt", selectedPrompt);
-    }
+    currentTab === "videos" 
+      ? videoForm.setValue("prompt", selectedPrompt) 
+      : imageForm.setValue("prompt", selectedPrompt);
   };
 
   const enhancePrompt = async () => {
@@ -461,35 +459,37 @@ export const EmoteGeneratorSidebar = ({
                           <div className="space-y-4">
                             {emotes.filter(emote => !emote.isVideo).length > 0 ? (
                               <>
-                                <ScrollArea className="h-[200px] border rounded-md pb-24">
-                                  <div className="grid grid-cols-2 gap-2 p-2">
-                                    {emotes
-                                      .filter(emote => !emote.isVideo)
-                                      .slice((sourceImagePage - 1) * ITEMS_PER_PAGE, sourceImagePage * ITEMS_PER_PAGE)
-                                      .map((emote) => (
-                                        <div
-                                          key={emote.id}
-                                          className={cn(
-                                            "relative w-full h-[80px] cursor-pointer border rounded-sm overflow-hidden",
-                                            selectedEmote?.id === emote.id && "ring-2 ring-primary"
-                                          )}
-                                          onClick={() => {
-                                            setUploadedImage(null);
-                                            setSelectedEmote(emote);
-                                            setImageSource("emote");
-                                            field.onChange(emote.imageUrl);
-                                          }}
-                                        >
-                                          <img
-                                            src={emote.imageUrl!}
-                                            alt={emote.prompt || "Emote"}
-                                            className="object-cover w-full h-full"
-                                          />
-                                        </div>
-                                      ))}
-                                  </div>
-                                </ScrollArea>
-                                <div className="flex justify-between items-center">
+                                <div className="max-h-[40vh] min-h-[200px]">
+                                  <ScrollArea className="border rounded-md h-[200px]">
+                                    <div className="grid grid-cols-2 gap-2 p-2">
+                                      {emotes
+                                        .filter(emote => !emote.isVideo)
+                                        .slice((sourceImagePage - 1) * ITEMS_PER_PAGE, sourceImagePage * ITEMS_PER_PAGE)
+                                        .map((emote) => (
+                                          <div
+                                            key={emote.id}
+                                            className={cn(
+                                              "relative w-full h-[80px] cursor-pointer border rounded-sm overflow-hidden",
+                                              selectedEmote?.id === emote.id && "ring-2 ring-primary"
+                                            )}
+                                            onClick={() => {
+                                              setUploadedImage(null);
+                                              setSelectedEmote(emote);
+                                              setImageSource("emote");
+                                              field.onChange(emote.imageUrl);
+                                            }}
+                                          >
+                                            <img
+                                              src={emote.imageUrl!}
+                                              alt={emote.prompt || "Emote"}
+                                              className="object-cover w-full h-full"
+                                            />
+                                          </div>
+                                        ))}
+                                    </div>
+                                  </ScrollArea>
+                                </div>
+                                <div className="flex justify-between items-center mt-2">
                                   <Button
                                     type="button"
                                     variant="outline"
