@@ -9,6 +9,7 @@ interface VideoTimelineProps {
   duration: number;
   onStartTimeChange: (time: number) => void;
   onEndTimeChange: (time: number) => void;
+  onTimeUpdate: (time: number) => void;
 }
 
 export const VideoTimeline: React.FC<VideoTimelineProps> = ({
@@ -18,6 +19,7 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
   duration,
   onStartTimeChange,
   onEndTimeChange,
+  onTimeUpdate,
 }) => {
   const [thumbnails, setThumbnails] = useState<string[]>([]);
   const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState(false);

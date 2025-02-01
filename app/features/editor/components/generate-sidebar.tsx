@@ -446,255 +446,257 @@ export const EmoteGeneratorSidebar = ({
           </TabsContent>
 
           <TabsContent value="videos">
-            <ScrollArea className="p-2">
-              <Form {...videoForm}>
-                <form onSubmit={videoForm.handleSubmit(onSubmit)} className="space-y-4 px-2">
-                  <div className="space-y-4 max-h-[calc(100vh-300px)] overflow-y-auto">
-                    <FormField
-                      control={videoForm.control}
-                      name="image"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Source Image</FormLabel>
-                          <div className="space-y-4">
-                            {emotes.filter(emote => !emote.isVideo).length > 0 ? (
-                              <>
-                                <div className="max-h-[40vh] min-h-[200px]">
-                                  <ScrollArea className="border rounded-md h-[200px]">
-                                    <div className="grid grid-cols-2 gap-2 p-2">
-                                      {emotes
-                                        .filter(emote => !emote.isVideo)
-                                        .slice((sourceImagePage - 1) * ITEMS_PER_PAGE, sourceImagePage * ITEMS_PER_PAGE)
-                                        .map((emote) => (
-                                          <div
-                                            key={emote.id}
-                                            className={cn(
-                                              "relative w-full h-[80px] cursor-pointer border rounded-sm overflow-hidden",
-                                              selectedEmote?.id === emote.id && "ring-2 ring-primary"
-                                            )}
-                                            onClick={() => {
-                                              setUploadedImage(null);
-                                              setSelectedEmote(emote);
-                                              setImageSource("emote");
-                                              field.onChange(emote.imageUrl);
-                                            }}
-                                          >
-                                            <img
-                                              src={emote.imageUrl!}
-                                              alt={emote.prompt || "Emote"}
-                                              className="object-cover w-full h-full"
-                                            />
-                                          </div>
-                                        ))}
-                                    </div>
-                                  </ScrollArea>
-                                </div>
-                                <div className="flex justify-between items-center mt-2">
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      setSourceImagePage(Math.max(1, sourceImagePage - 1));
-                                    }}
-                                    disabled={sourceImagePage === 1}
-                                  >
-                                    <ChevronLeft className="h-4 w-4" />
-                                  </Button>
-                                  <span className="text-sm font-medium">
-                                    {sourceImagePage} / {Math.ceil(emotes.filter(emote => !emote.isVideo).length / ITEMS_PER_PAGE)}
-                                  </span>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      setSourceImagePage(Math.min(Math.ceil(emotes.filter(emote => !emote.isVideo).length / ITEMS_PER_PAGE), sourceImagePage + 1));
-                                    }}
-                                    disabled={sourceImagePage === Math.ceil(emotes.filter(emote => !emote.isVideo).length / ITEMS_PER_PAGE)}
-                                  >
-                                    <ChevronRight className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </>
-                            ) : (
-                              <Button 
-                                type="button"
-                                variant="outline"
-                                className="w-full"
-                                onClick={() => setCurrentTab("images")}
-                              >
-                                Generate an Image
-                              </Button>
-                            )}
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={videoForm.control}
-                      name="model"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Model</FormLabel>
-                          <FormControl>
-                            <Select 
-                              onValueChange={(value) => {
-                                field.onChange(value);
-                                setSelectedModel(videoGeneration.models.find(m => m.name === value) || videoGeneration.models[0]);
-                              }} 
-                              defaultValue={field.value}
-                            >
-                              <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
-                                <SelectValue placeholder="Select model" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {videoGeneration.models.map((model) => (
-                                  <SelectItem key={model.name} value={model.name}>
-                                    {model.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={videoForm.control}
-                      name="prompt"
-                      render={({ field, fieldState }) => (
-                        <FormItem>
-                          <FormLabel className={cn(fieldState.error && "text-destructive")}>Motion Description</FormLabel>
-                          <FormControl>
-                            <Textarea 
-                              placeholder="Describe how you want the image to move..."
-                              className={cn(
-                                "px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0",
-                                fieldState.error && "border-destructive"
+            <ScrollArea className="h-[calc(100vh-200px)]">
+              <div className="p-2">
+                <Form {...videoForm}>
+                  <form onSubmit={videoForm.handleSubmit(onSubmit)} className="space-y-4 px-2">
+                    <div className="space-y-4">
+                      <FormField
+                        control={videoForm.control}
+                        name="image"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Source Image</FormLabel>
+                            <div className="space-y-4">
+                              {emotes.filter(emote => !emote.isVideo).length > 0 ? (
+                                <>
+                                  <div className="max-h-[40vh] min-h-[200px]">
+                                    <ScrollArea className="border rounded-md h-[200px]">
+                                      <div className="grid grid-cols-2 gap-2 p-2">
+                                        {emotes
+                                          .filter(emote => !emote.isVideo)
+                                          .slice((sourceImagePage - 1) * ITEMS_PER_PAGE, sourceImagePage * ITEMS_PER_PAGE)
+                                          .map((emote) => (
+                                            <div
+                                              key={emote.id}
+                                              className={cn(
+                                                "relative w-full h-[80px] cursor-pointer border rounded-sm overflow-hidden",
+                                                selectedEmote?.id === emote.id && "ring-2 ring-primary"
+                                              )}
+                                              onClick={() => {
+                                                setUploadedImage(null);
+                                                setSelectedEmote(emote);
+                                                setImageSource("emote");
+                                                field.onChange(emote.imageUrl);
+                                              }}
+                                            >
+                                              <img
+                                                src={emote.imageUrl!}
+                                                alt={emote.prompt || "Emote"}
+                                                className="object-cover w-full h-full"
+                                              />
+                                            </div>
+                                          ))}
+                                      </div>
+                                    </ScrollArea>
+                                  </div>
+                                  <div className="flex justify-between items-center mt-2">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        setSourceImagePage(Math.max(1, sourceImagePage - 1));
+                                      }}
+                                      disabled={sourceImagePage === 1}
+                                    >
+                                      <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <span className="text-sm font-medium">
+                                      {sourceImagePage} / {Math.ceil(emotes.filter(emote => !emote.isVideo).length / ITEMS_PER_PAGE)}
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        setSourceImagePage(Math.min(Math.ceil(emotes.filter(emote => !emote.isVideo).length / ITEMS_PER_PAGE), sourceImagePage + 1));
+                                      }}
+                                      disabled={sourceImagePage === Math.ceil(emotes.filter(emote => !emote.isVideo).length / ITEMS_PER_PAGE)}
+                                    >
+                                      <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </>
+                              ) : (
+                                <Button 
+                                  type="button"
+                                  variant="outline"
+                                  className="w-full"
+                                  onClick={() => setCurrentTab("images")}
+                                >
+                                  Generate an Image
+                                </Button>
                               )}
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <Button 
-                      onClick={enhancePrompt} 
-                      disabled={isEnhancing || isGenerating} 
-                      className="w-full"
-                    >
-                      {isEnhancing ? <Loader className="animate-spin" /> : "Enhance Prompt (1 Credit)"}
-                    </Button>
-
-                    {enhancedPrompts.length > 0 && (
-                      <div className="mt-2">
-                        <Select onValueChange={handleSelectEnhancedPrompt}>
-                          <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
-                            <SelectValue placeholder="Select enhanced prompt" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {enhancedPrompts.map((prompt, index) => (
-                              <SelectItem key={index} value={prompt}>
-                                <div className="max-w-[250px] whitespace-normal break-words">
-                                  {prompt}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value="settings">
-                        <AccordionTrigger>Settings</AccordionTrigger>
-                        <AccordionContent className="space-y-4">
-                          <FormField
-                            control={videoForm.control}
-                            name="duration"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Duration</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
-                                    <SelectValue placeholder="Select duration" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="5">5 seconds</SelectItem>
-                                    <SelectItem value="10">10 seconds</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={videoForm.control}
-                            name="ratio"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Aspect Ratio</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
-                                    <SelectValue placeholder="Select aspect ratio" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="16:9">16:9</SelectItem>
-                                    <SelectItem value="9:16">9:16</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </FormItem>
-                            )}
-                          />
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  </div>
-                  <div className="sticky bottom-0 bg-white pt-4">
-                    <Button 
-                      type="submit" 
-                      disabled={isGenerating} 
-                      className="w-full"
-                    >
-                      {isGenerating ? (
-                        <Loader className="animate-spin" />
-                      ) : (
-                        `Generate Video (${videoGeneration.models.find(m => m.name === videoForm.watch("model"))?.credits || 10} Credits)`
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-
-              {videos.length > 0 && (
-                <div className="mt-4 space-y-4">
-                  {videos.map((url, index) => (
-                    <div key={index} className="relative aspect-video w-full bg-muted rounded-sm overflow-hidden">
-                      <video
-                        src={url}
-                        controls
-                        className="w-full h-full"
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                      <Button
-                        onClick={() => editor?.addVideo(url)}
-                        className="absolute bottom-2 right-2"
-                        size="sm"
+
+                      <FormField
+                        control={videoForm.control}
+                        name="model"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Model</FormLabel>
+                            <FormControl>
+                              <Select 
+                                onValueChange={(value) => {
+                                  field.onChange(value);
+                                  setSelectedModel(videoGeneration.models.find(m => m.name === value) || videoGeneration.models[0]);
+                                }} 
+                                defaultValue={field.value}
+                              >
+                                <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
+                                  <SelectValue placeholder="Select model" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {videoGeneration.models.map((model) => (
+                                    <SelectItem key={model.name} value={model.name}>
+                                      {model.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={videoForm.control}
+                        name="prompt"
+                        render={({ field, fieldState }) => (
+                          <FormItem>
+                            <FormLabel className={cn(fieldState.error && "text-destructive")}>Motion Description</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Describe how you want the image to move..."
+                                className={cn(
+                                  "px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0",
+                                  fieldState.error && "border-destructive"
+                                )}
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <Button 
+                        onClick={enhancePrompt} 
+                        disabled={isEnhancing || isGenerating} 
+                        className="w-full"
                       >
-                        Add to Canvas
+                        {isEnhancing ? <Loader className="animate-spin" /> : "Enhance Prompt (1 Credit)"}
+                      </Button>
+
+                      {enhancedPrompts.length > 0 && (
+                        <div className="mt-2">
+                          <Select onValueChange={handleSelectEnhancedPrompt}>
+                            <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
+                              <SelectValue placeholder="Select enhanced prompt" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {enhancedPrompts.map((prompt, index) => (
+                                <SelectItem key={index} value={prompt}>
+                                  <div className="max-w-[250px] whitespace-normal break-words">
+                                    {prompt}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      <Accordion type="single" collapsible>
+                        <AccordionItem value="settings">
+                          <AccordionTrigger>Settings</AccordionTrigger>
+                          <AccordionContent className="space-y-4">
+                            <FormField
+                              control={videoForm.control}
+                              name="duration"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Duration</FormLabel>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
+                                      <SelectValue placeholder="Select duration" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="5">5 seconds</SelectItem>
+                                      <SelectItem value="10">10 seconds</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={videoForm.control}
+                              name="ratio"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Aspect Ratio</FormLabel>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
+                                      <SelectValue placeholder="Select aspect ratio" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="16:9">16:9</SelectItem>
+                                      <SelectItem value="9:16">9:16</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </FormItem>
+                              )}
+                            />
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    </div>
+                    <div className="bg-white pt-4">
+                      <Button 
+                        type="submit" 
+                        disabled={isGenerating} 
+                        className="w-full"
+                      >
+                        {isGenerating ? (
+                          <Loader className="animate-spin" />
+                        ) : (
+                          `Generate Video (${videoGeneration.models.find(m => m.name === videoForm.watch("model"))?.credits || 10} Credits)`
+                        )}
                       </Button>
                     </div>
-                  ))}
-                </div>
-              )}
+                  </form>
+                </Form>
+
+                {videos.length > 0 && (
+                  <div className="mt-4 space-y-4 pb-4">
+                    {videos.map((url, index) => (
+                      <div key={index} className="relative aspect-video w-full bg-muted rounded-sm overflow-hidden">
+                        <video
+                          src={url}
+                          controls
+                          className="w-full h-full"
+                        />
+                        <Button
+                          onClick={() => editor?.addVideo(url)}
+                          className="absolute bottom-2 right-2"
+                          size="sm"
+                        >
+                          Add to Canvas
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </ScrollArea>
           </TabsContent>
         </Tabs>

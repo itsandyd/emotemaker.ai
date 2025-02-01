@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ActiveTool, KonvaEditor, VideoObject } from "../types"
-import { AlignRight, ArrowDown, ArrowUp, ChevronDown, DownloadCloud, EraserIcon, FrameIcon, PaintBucket, PictureInPicture, PictureInPicture2, Save, Scissors, Trash2 } from "lucide-react";
+import { AlignRight, ArrowDown, ArrowUp, ChevronDown, DownloadCloud, EraserIcon, FrameIcon, PaintBucket, PictureInPicture, PictureInPicture2, Save, Scissors, Trash2, Download, Undo, Redo, Pause, Play } from "lucide-react";
 import { BsBorderWidth } from "react-icons/bs";
 import { RxTransparencyGrid } from "react-icons/rx";
 import { TbColorFilter } from "react-icons/tb";
@@ -15,20 +15,33 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { VideoTimeline } from "./video-timeline";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ToolbarProps {
-    editor: KonvaEditor | undefined;
+    editor: KonvaEditor | null;
     activeTool: ActiveTool;
     onChangeActiveTool: (tool: ActiveTool) => void;
-    addEmote: (newEmote: Emote) => void;
+    addEmote: (emote: Emote) => void;
     currentPrompt: string;
 }
 
-export const Toolbar = ({ editor, activeTool, onChangeActiveTool, addEmote, currentPrompt }: ToolbarProps) => {
+export const Toolbar = ({
+    editor,
+    activeTool,
+    onChangeActiveTool,
+    addEmote,
+    currentPrompt
+}: ToolbarProps) => {
     const { userId } = useAuth();
     const [isRemovingBackground, setIsRemovingBackground] = useState(false);
     const [isSavingEmote, setIsSavingEmote] = useState(false);
     const [isDownloadingEmote, setIsDownloadingEmote] = useState(false);
+    const [isDownloadingGif, setIsDownloadingGif] = useState(false);
     const [startTime, setStartTime] = useState(0);
     const [endTime, setEndTime] = useState(0);
 
@@ -40,9 +53,12 @@ export const Toolbar = ({ editor, activeTool, onChangeActiveTool, addEmote, curr
     const isText = selectedNode?.attrs?.text !== undefined;
     const isImage = selectedNode?.attrs?.image !== undefined;
     const isVideo = selectedNode && editor?.isVideoObject(selectedNode);
+    const hasAnimation = selectedNode && editor?.getAnimation(selectedNode);
 
     console.log('Selected node:', selectedNode);
     console.log('Is video:', isVideo);
+    console.log('Has animation:', hasAnimation);
+    console.log('Animation data:', selectedNode?.attrs?.animation);
     console.log('Editor:', editor);
     console.log('Video methods:', {
         startTime: editor?.getVideoStartTime(),
@@ -52,58 +68,97 @@ export const Toolbar = ({ editor, activeTool, onChangeActiveTool, addEmote, curr
 
     useEffect(() => {
         if (editor && editor.selectedNode && editor.isVideoObject(editor.selectedNode)) {
-            setStartTime(editor.getVideoStartTime());
-            setEndTime(editor.getVideoEndTime());
+            const videoDuration = editor.selectedNode.attrs.duration || 
+                                editor.selectedNode.attrs.videoElement?.duration || 
+                                editor.getVideoDuration();
+            
+            const start = Math.max(0, editor.getVideoStartTime());
+            const end = Math.min(videoDuration, editor.getVideoEndTime());
+            
+            setStartTime(start);
+            setEndTime(end);
+            
+            // Ensure video element has correct times
+            const videoElement = editor.selectedNode.attrs.videoElement;
+            if (videoElement) {
+                videoElement.currentTime = start;
+                if (editor.selectedNode.attrs.isPlaying) {
+                    videoElement.play().catch(console.error);
+                }
+            }
         }
     }, [editor?.selectedNode, editor]);
 
     if (!selectedNode) {
         return (
-            <div className="shrink-0 h-[56px] border-b border-gray-300 bg-white w-full flex items-center overflow-x-auto z-[49] p-2 gap-x-2" />
+            <div className="shrink-0 h-[62px] border-b border-gray-300 bg-white w-full flex items-center overflow-x-auto z-[49] p-2 gap-x-2" />
         )
     }
 
     return (
         <div className="shrink-0 h-[62px] border-b border-gray-300 bg-white w-full flex items-center overflow-x-auto z-[49] p-2 gap-x-2" >
+            <div className="flex items-center h-full justify-center gap-x-1">
+                <Hint label="Undo" side="bottom" sideOffset={5}>
+                    <Button
+                        onClick={() => editor?.undo()}
+                        size="icon"
+                        variant="ghost"
+                    >
+                        <Undo className="size-4" />
+                    </Button>
+                </Hint>
+                <Hint label="Redo" side="bottom" sideOffset={5}>
+                    <Button
+                        onClick={() => editor?.redo()}
+                        size="icon"
+                        variant="ghost"
+                    >
+                        <Redo className="size-4" />
+                    </Button>
+                </Hint>
+            </div>
             {isVideo && editor && (
                 <>
                     <div className="flex-1 h-full flex items-center px-2">
                         <VideoTimeline
-                            videoElement={(editor.selectedNode as VideoObject).getVideoElement()}
+                            videoElement={(editor.selectedNode as VideoObject).attrs.videoElement}
                             startTime={startTime}
                             endTime={endTime}
                             duration={editor.getVideoDuration()}
-                            onStartTimeChange={(value) => {
-                                setStartTime(value);
-                                if (editor.selectedNode && editor.isVideoObject(editor.selectedNode)) {
-                                    editor.selectedNode.setStartTime(value);
-                                }
-                            }}
-                            onEndTimeChange={(value) => {
-                                setEndTime(value);
-                                if (editor.selectedNode && editor.isVideoObject(editor.selectedNode)) {
-                                    editor.selectedNode.setEndTime(value);
+                            onStartTimeChange={editor.setVideoStartTime}
+                            onEndTimeChange={editor.setVideoEndTime}
+                            onTimeUpdate={(time) => {
+                                const video = (editor.selectedNode as VideoObject).attrs.videoElement;
+                                if (video) {
+                                    video.currentTime = time;
                                 }
                             }}
                         />
                     </div>
-                    <div className="flex items-center h-full justify-center">
-                        <Hint label="Download Trimmed Video" side="bottom" sideOffset={5}>
-                            <Button
-                                onClick={async () => {
-                                    try {
-                                        await editor.downloadTrimmedVideo();
-                                    } catch (error) {
-                                        console.error('Failed to download trimmed video:', error);
-                                        toast.error('Failed to download trimmed video');
+                    <div className="flex items-center gap-2 px-2">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                                const videoObj = editor.selectedNode as VideoObject;
+                                const video = videoObj.attrs.videoElement;
+                                if (video) {
+                                    if (video.paused) {
+                                        video.play();
+                                        videoObj.attrs.isPlaying = true;
+                                    } else {
+                                        video.pause();
+                                        videoObj.attrs.isPlaying = false;
                                     }
-                                }}
-                                size="icon"
-                                variant="ghost"
-                            >
-                                <Scissors className="size-4" />
-                            </Button>
-                        </Hint>
+                                }
+                            }}
+                        >
+                            {(editor.selectedNode as VideoObject).attrs.isPlaying ? (
+                                <Pause className="h-4 w-4" />
+                            ) : (
+                                <Play className="h-4 w-4" />
+                            )}
+                        </Button>
                     </div>
                 </>
             )}
@@ -251,27 +306,75 @@ export const Toolbar = ({ editor, activeTool, onChangeActiveTool, addEmote, curr
                 </div>
             )}
             <div className="flex items-center h-full justify-center">
-                <Hint label="Download Emote" side="bottom" sideOffset={5}>
-                    <Button
-                        onClick={async () => {
-                            setIsDownloadingEmote(true);
-                            try {
-                                await editor?.download();
-                            } finally {
-                                setIsDownloadingEmote(false);
-                            }
-                        }}
-                        size="icon"
-                        variant="ghost"
-                        disabled={isDownloadingEmote}
-                    >
-                        {isDownloadingEmote ? (
-                            <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                            <DownloadCloud className="size-4" />
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            disabled={isDownloadingEmote || isDownloadingGif}
+                        >
+                            {isDownloadingEmote || isDownloadingGif ? (
+                                <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                                <DownloadCloud className="size-4" />
+                            )}
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                            onClick={async () => {
+                                setIsDownloadingEmote(true);
+                                try {
+                                    await editor?.download();
+                                } finally {
+                                    setIsDownloadingEmote(false);
+                                }
+                            }}
+                            disabled={isDownloadingEmote || isDownloadingGif}
+                        >
+                            <Download className="size-4 mr-2" />
+                            Download as PNG
+                        </DropdownMenuItem>
+                        {selectedNode && editor?.getAnimation(selectedNode) && (
+                            <DropdownMenuItem
+                                onClick={async () => {
+                                    try {
+                                        setIsDownloadingGif(true);
+                                        await editor?.downloadAsGif();
+                                    } catch (error) {
+                                        console.error('Error downloading GIF:', error);
+                                        toast.error('Failed to download GIF');
+                                    } finally {
+                                        setIsDownloadingGif(false);
+                                    }
+                                }}
+                                disabled={isDownloadingEmote || isDownloadingGif}
+                            >
+                                <FrameIcon className="size-4 mr-2" />
+                                Download as GIF
+                            </DropdownMenuItem>
                         )}
-                    </Button>
-                </Hint>
+                        {isVideo && (
+                            <DropdownMenuItem
+                                onClick={async () => {
+                                    setIsDownloadingEmote(true);
+                                    try {
+                                        await editor?.downloadTrimmedVideo();
+                                    } catch (error) {
+                                        console.error('Failed to download trimmed video:', error);
+                                        toast.error('Failed to download trimmed video');
+                                    } finally {
+                                        setIsDownloadingEmote(false);
+                                    }
+                                }}
+                                disabled={isDownloadingEmote || isDownloadingGif}
+                            >
+                                <Scissors className="size-4 mr-2" />
+                                Download Trimmed Video
+                            </DropdownMenuItem>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
             <div className="flex items-center h-full justify-center">
                 <Hint label="Save Emote" side="bottom" sideOffset={5}>
@@ -291,7 +394,7 @@ export const Toolbar = ({ editor, activeTool, onChangeActiveTool, addEmote, curr
                                     // Download the trimmed video first
                                     await editor.downloadTrimmedVideo();
                                     // For now, we'll use the original video URL
-                                    const videoUrl = editor.selectedNode.getVideoElement().src;
+                                    const videoUrl = editor.selectedNode.attrs.videoElement.src;
                                     if (!videoUrl) {
                                         throw new Error('Failed to get video URL');
                                     }
@@ -340,4 +443,4 @@ export const Toolbar = ({ editor, activeTool, onChangeActiveTool, addEmote, curr
             </div>
         </div>
     )
-}
+};

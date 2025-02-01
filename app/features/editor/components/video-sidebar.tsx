@@ -32,15 +32,23 @@ export const VideoSidebar = ({
   useEffect(() => {
     if (editor?.selectedNode && editor.isVideoObject(editor.selectedNode)) {
       const videoElement = editor.selectedNode.getAttr('videoElement') as HTMLVideoElement;
-      setVolume(videoElement.volume);
-      setPlaybackRate(videoElement.playbackRate);
-      setBrightness(editor.selectedNode.getAttr('brightness') || 100);
-      setContrast(editor.selectedNode.getAttr('contrast') || 100);
-      setSaturation(editor.selectedNode.getAttr('saturation') || 100);
+      if (videoElement) {
+        // Only set values if they exist, otherwise use defaults
+        setVolume(typeof videoElement.volume === 'number' ? videoElement.volume : 1);
+        setPlaybackRate(typeof videoElement.playbackRate === 'number' ? videoElement.playbackRate : 1);
+        setBrightness(editor.selectedNode.attrs.brightness ?? 100);
+        setContrast(editor.selectedNode.attrs.contrast ?? 100);
+        setSaturation(editor.selectedNode.attrs.saturation ?? 100);
+      }
     }
   }, [editor?.selectedNode]);
 
   if (activeTool !== "video-controls" || !editor?.selectedNode || !editor.isVideoObject(editor.selectedNode)) {
+    return null;
+  }
+
+  const videoElement = editor.selectedNode.getAttr('videoElement') as HTMLVideoElement;
+  if (!videoElement) {
     return null;
   }
 
@@ -55,7 +63,10 @@ export const VideoSidebar = ({
           step={0.1}
           onValueChange={([value]) => {
             setVolume(value);
-            editor.setVolume(value);
+            if (videoElement) {
+              videoElement.volume = value;
+              editor.setVolume(value);
+            }
           }}
         />
       </div>
@@ -68,7 +79,10 @@ export const VideoSidebar = ({
           step={0.1}
           onValueChange={([value]) => {
             setPlaybackRate(value);
-            editor.setPlaybackRate(value);
+            if (videoElement) {
+              videoElement.playbackRate = value;
+              editor.setPlaybackRate(value);
+            }
           }}
         />
       </div>

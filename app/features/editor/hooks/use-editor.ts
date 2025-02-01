@@ -4,6 +4,7 @@ import { KonvaEditor, WorkspaceType, VideoObject, DEFAULT_WORKSPACE_CONFIGS, DEF
 import axios from "axios";
 import toast from "react-hot-toast";
 import { Emote } from "@prisma/client";
+import GIF from 'gif.js';
 
 // Store active tweens for each node
 const nodeTweens = new WeakMap<Konva.Node, Konva.Tween[]>();
@@ -211,6 +212,19 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     // Setup event listeners
     newStage.on('click tap', (e) => {
       const target = e.target;
+      const currentSelection = selectedNode;
+
+      // If we currently have a video selected, don't allow deselection
+      if (currentSelection && editor.isVideoObject(currentSelection)) {
+        // Keep the current video selected
+        if (transformer.current) {
+          transformer.current.nodes([currentSelection]);
+          transformer.current.moveToTop();
+        }
+        return;
+      }
+
+      // Rest of the click handling remains the same
       const isWorkspace = target === workspace || target === newStage;
       const isTransformer = transformer.current && (target as any).getClassName?.() === 'Transformer';
 
@@ -218,7 +232,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
         setSelectedNode(null);
         if (transformer.current) {
           transformer.current.nodes([]);
-          transformer.current.remove(); // Remove from layer
+          transformer.current.remove();
         }
         clearSelectionCallback?.();
         return;
@@ -226,16 +240,60 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
 
       if (isTransformer) return;
 
-      if (target instanceof Konva.Group || target instanceof Konva.Shape || target instanceof Konva.Image) {
-        setSelectedNode(target);
+      // Check if the clicked element is in the active layer
+      const targetLayer = target.getLayer();
+      if (targetLayer !== activeLayer) {
+        console.log('Clicked element is not in active layer', {
+          targetLayer: targetLayer?.name(),
+          activeLayer: activeLayer?.name(),
+          target: target.getClassName()
+        });
+        return;
+      }
+
+      // Find the parent group if the target is a child (like an Image inside a video group)
+      let nodeToSelect: Konva.Node = target;
+      console.log('Initial target:', {
+        className: target.getClassName(),
+        attrs: target.getAttrs(),
+        layer: target.getLayer()?.name(),
+        parent: target.parent ? {
+          className: target.parent.getClassName(),
+          attrs: target.parent.getAttrs()
+        } : null
+      });
+
+      // First check if we clicked on a child of a video group
+      if (target.parent instanceof Konva.Group && target.parent.getAttr('objectType') === 'video') {
+        nodeToSelect = target.parent;
+      } 
+      // Then check if we clicked directly on a video group
+      else if (target instanceof Konva.Group && target.getAttr('objectType') === 'video') {
+        nodeToSelect = target;
+      }
+      // Finally check if we clicked on an image that is actually a video frame
+      else if (target instanceof Konva.Image && target.parent?.getAttr('objectType') === 'video') {
+        nodeToSelect = target.parent;
+      }
+
+      console.log('Node to select:', {
+        isGroup: nodeToSelect instanceof Konva.Group,
+        objectType: nodeToSelect.getAttr('objectType'),
+        hasVideoElement: nodeToSelect.getAttr('videoElement') instanceof HTMLVideoElement,
+        className: nodeToSelect.getClassName(),
+        layer: nodeToSelect.getLayer()?.name()
+      });
+
+      if (nodeToSelect instanceof Konva.Group || nodeToSelect instanceof Konva.Shape || nodeToSelect instanceof Konva.Image) {
+        setSelectedNode(nodeToSelect);
         if (transformer.current) {
           // Remove from previous layer if exists
           transformer.current.remove();
           // Add to target's layer
-          target.getLayer()?.add(transformer.current);
-          transformer.current.nodes([target]);
+          nodeToSelect.getLayer()?.add(transformer.current);
+          transformer.current.nodes([nodeToSelect]);
           transformer.current.moveToTop();
-          target.getLayer()?.batchDraw();
+          nodeToSelect.getLayer()?.batchDraw();
         }
       }
     });
@@ -432,11 +490,19 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
         return Promise.reject('No layer or stage');
       }
 
+      // Always use emotes layer for videos
+      const layer = layers.get('emotes');
+      if (!layer) {
+        console.error('Emotes layer not found');
+        return Promise.reject('Emotes layer not found');
+      }
+      setActiveLayer(layer);
+
       console.log('Creating new video with URL:', url);
       const video = document.createElement('video');
       video.crossOrigin = 'anonymous';
-      // Use the proxy route for videos as well
-      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}`;
+      // Use the video proxy route instead of the image proxy route
+      const proxyUrl = `/api/proxy-video?url=${encodeURIComponent(url)}`;
       video.src = proxyUrl;
       video.muted = true;
       video.loop = true;
@@ -444,126 +510,171 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       video.autoplay = true;
 
       return new Promise<VideoObject>((resolve, reject) => {
-        video.onloadedmetadata = () => {
-          try {
-            console.log('Video loaded successfully');
-            
-            // Create the group first
-            const group = new Konva.Group({
-              draggable: true,
-              name: 'video-group'
-            }) as VideoObject;
+        let metadataLoaded = false;
+        let dataLoaded = false;
 
-            // Calculate scale to fill canvas
-            const scaleX = stage.width() / video.videoWidth;
-            const scaleY = stage.height() / video.videoHeight;
-            const scale = Math.max(scaleX, scaleY);
+        // Create the group first without dimensions
+        const group = new Konva.Group({
+          draggable: true,
+          name: 'video-group',
+          attrs: {
+            objectType: 'video',
+            videoElement: video,
+            startTime: 0,
+            endTime: 0,
+            duration: 0,
+            brightness: 100,
+            contrast: 100,
+            saturation: 100,
+            isPlaying: false
+          }
+        }) as VideoObject;
 
-            // Create the video image
-            const konvaVideo = new Konva.Image({
-              image: video,
-              width: video.videoWidth,
-              height: video.videoHeight,
-              scaleX: scale,
-              scaleY: scale,
-              x: (stage.width() - video.videoWidth * scale) / 2,
-              y: (stage.height() - video.videoHeight * scale) / 2
-            });
+        // Add event listeners
+        video.addEventListener('loadedmetadata', () => {
+          metadataLoaded = true;
+          checkReady();
+        });
 
-            // Add the video to the group
-            group.add(konvaVideo);
+        video.addEventListener('loadeddata', () => {
+          dataLoaded = true;
+          checkReady();
+        });
 
-            // Add video methods to the group
-            group.getVideoElement = () => video;
-            group.play = () => {
-              video.currentTime = group.attrs.startTime || 0;
-              video.play().catch(console.error);
-              activeLayer.draw();
-            };
-            group.pause = () => {
-              video.pause();
-              activeLayer.draw();
-            };
-            group.setStartTime = (time: number) => {
-              const newTime = Math.max(0, Math.min(time, video.duration));
-              group.attrs.startTime = newTime;
-              if (video.currentTime < newTime) {
-                video.currentTime = newTime;
-              }
-              activeLayer.draw();
-            };
-            group.setEndTime = (time: number) => {
-              const newTime = Math.max(group.attrs.startTime || 0, Math.min(time, video.duration));
-              group.attrs.endTime = newTime;
-              if (video.currentTime > newTime) {
-                video.currentTime = group.attrs.startTime || 0;
-              }
-              activeLayer.draw();
-            };
-            group.getDuration = () => video.duration;
-            group.getCurrentTime = () => video.currentTime;
-            group.setCurrentTime = (time: number) => {
-              const startTime = group.attrs.startTime || 0;
-              const endTime = group.attrs.endTime || video.duration;
-              const newTime = Math.max(startTime, Math.min(time, endTime));
-              video.currentTime = newTime;
-              activeLayer.draw();
-            };
+        const checkReady = () => {
+          if (metadataLoaded && dataLoaded && video.duration) {
+            try {
+              // Calculate scale and dimensions now that we have video metadata
+              const scale = Math.min(
+                (stage.width() * 0.8) / video.videoWidth,
+                (stage.height() * 0.8) / video.videoHeight
+              );
 
-            // Add the group to the layer
-            activeLayer.add(group);
+              // Set group dimensions
+              group.width(video.videoWidth * scale);
+              group.height(video.videoHeight * scale);
 
-            // Create animation to update video frames
-            const anim = new Konva.Animation(() => {
-              activeLayer.batchDraw();
-              return true;
-            }, activeLayer);
+              // Create and add the video image
+              const konvaVideo = new Konva.Image({
+                image: video,
+                width: video.videoWidth,
+                height: video.videoHeight,
+                scaleX: scale,
+                scaleY: scale,
+                // draggable: false
+              });
 
-            // Add video loop handling
-            video.addEventListener('timeupdate', () => {
-              if (!video.paused) {
-                const startTime = group.attrs.startTime;
-                const endTime = group.attrs.endTime;
-                if (video.currentTime < startTime) {
-                  video.currentTime = startTime;
-                } else if (video.currentTime >= endTime) {
-                  video.currentTime = startTime;
-                  video.play().catch(console.error);
+              // Center the group
+              group.position({
+                x: (stage.width() - video.videoWidth * scale) / 2,
+                y: (stage.height() - video.videoHeight * scale) / 2
+              });
+
+              group.add(konvaVideo);
+              layer.add(group);
+
+              // Create animation to update video frames
+              const anim = new Konva.Animation(() => {
+                layer.batchDraw();
+                return true;
+              }, layer);
+
+              // Add video loop handling
+              video.addEventListener('timeupdate', () => {
+                if (!video.paused) {
+                  const startTime = group.attrs.startTime;
+                  const endTime = group.attrs.endTime;
+                  if (video.currentTime < startTime) {
+                    video.currentTime = startTime;
+                  } else if (video.currentTime >= endTime) {
+                    video.currentTime = startTime;
+                    video.play().catch(console.error);
+                  }
                 }
+              });
+
+              // Start animation and play video
+              anim.start();
+              video.play().catch(console.error);
+              group.attrs.isPlaying = true;
+
+              // Select the newly added video
+              setSelectedNode(group);
+              if (transformer.current) {
+                // Remove transformer from current layer
+                transformer.current.remove();
+                // Add to the same layer as group
+                layer.add(transformer.current);
+                transformer.current.nodes([group]);
+                transformer.current.moveToTop();
+                // Force layer redraw
+                layer.batchDraw();
               }
-            });
 
-            // Initialize video attributes
-            group.attrs.startTime = 0;
-            group.attrs.endTime = video.duration;
-            group.attrs.objectType = 'video';
-            group.attrs.videoElement = video;
-
-            // Start animation and play video
-            anim.start();
-            group.play();
-
-            // Save to history
-            saveToHistory();
-            console.log('Video added to canvas successfully');
-            resolve(group);
-          } catch (error) {
-            console.error('Error adding video to canvas:', error);
-            reject(error);
+              // Save to history
+              saveToHistory();
+              
+              console.log('Video added to canvas successfully');
+              console.log('Video object type:', group.attrs.objectType);
+              console.log('Is video object:', editor.isVideoObject(group));
+              resolve(group);
+            } catch (error) {
+              reject(error);
+            }
           }
         };
-        video.onerror = (error) => {
-          console.error('Error loading video:', error);
-          reject(new Error('Failed to load video'));
-        };
+
         video.load();
       });
     },
 
     isVideoObject: (node: Konva.Node): node is VideoObject => {
-      return node instanceof Konva.Group && 
-        node.getAttr('objectType') === 'video' && 
-        node.getAttr('videoElement') instanceof HTMLVideoElement;
+      if (!node) return false;
+      
+      // If the node is an Image, check its parent for video properties
+      if (node instanceof Konva.Image && node.parent instanceof Konva.Group) {
+        node = node.parent;
+      }
+      
+      const isGroup = node instanceof Konva.Group;
+      const objectType = node.getAttr('objectType');
+      const videoElement = node.getAttr('videoElement');
+      
+      console.log('Checking if node is video object:', {
+        isGroup,
+        objectType,
+        hasVideoElement: videoElement instanceof HTMLVideoElement,
+        videoDuration: videoElement instanceof HTMLVideoElement ? videoElement.duration : 'N/A',
+        attrs: node.getAttrs()
+      });
+      
+      // If it's a video object but missing some attributes, reinitialize them
+      if (isGroup && objectType === 'video' && videoElement instanceof HTMLVideoElement) {
+        const attrs = node.getAttrs();
+        const duration = videoElement.duration || attrs.duration || 0; // Use cached duration if available
+        
+        // Only update duration-related attributes if we have a valid duration
+        if (duration > 0) {
+          if (attrs.startTime === undefined || attrs.startTime >= duration) {
+            attrs.startTime = 0;
+          }
+          if (attrs.endTime === undefined || attrs.endTime > duration || attrs.endTime === 0) {
+            attrs.endTime = duration;
+          }
+          attrs.duration = duration; // Cache the duration on the node
+        }
+        
+        // Always ensure these attributes exist
+        if (attrs.brightness === undefined) attrs.brightness = 100;
+        if (attrs.contrast === undefined) attrs.contrast = 100;
+        if (attrs.saturation === undefined) attrs.saturation = 100;
+        if (attrs.isPlaying === undefined) attrs.isPlaying = !videoElement.paused;
+        
+        node.setAttrs(attrs);
+        return true;
+      }
+      
+      return false;
     },
 
     addText: (text: string, options?: KonvaTextOptions) => {
@@ -693,6 +804,83 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    },
+
+    downloadAsGif: async () => {
+      if (!stage || !selectedNode) return;
+      
+      try {
+        // Create a GIF encoder
+        const gif = new GIF({
+          workers: 2,
+          quality: 10,
+          width: stage.width(),
+          height: stage.height(),
+          workerScript: '/gif.worker.js'
+        });
+
+        // Store current transformer state and hide it
+        const currentTransformers = stage.find('Transformer');
+        currentTransformers.forEach(tr => tr.hide());
+        stage.batchDraw();
+
+        // Capture frames for 2 seconds (60fps = 120 frames)
+        const frames = 120;
+        const animation = selectedNode.getAttr('animation');
+        
+        if (!animation) {
+          console.warn('No animation found on selected node');
+          return;
+        }
+
+        // Add frames to the GIF
+        for (let i = 0; i < frames; i++) {
+          // Get the current frame as an image
+          const dataUrl = stage.toDataURL();
+          const img = document.createElement('img');
+          img.src = dataUrl;
+          
+          await new Promise(resolve => {
+            img.onload = () => {
+              gif.addFrame(img, { delay: 1000 / 60 }); // 60fps
+              resolve(null);
+            };
+          });
+
+          // Wait for next animation frame
+          await new Promise(resolve => requestAnimationFrame(resolve));
+        }
+
+        // Restore transformer state
+        currentTransformers.forEach(tr => tr.show());
+        stage.batchDraw();
+
+        // Return a promise that resolves when the file is downloaded
+        return new Promise<void>((resolve, reject) => {
+          gif.on('finished', (blob: Blob) => {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = 'animated-emote.gif';
+            link.href = url;
+            document.body.appendChild(link);
+            
+            // Click the link to start the download
+            link.click();
+            
+            // Clean up
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            // Resolve immediately after initiating download
+            resolve();
+          });
+
+          gif.render();
+        });
+      } catch (error) {
+        console.error('Error creating GIF:', error);
+        throw error;
+      }
     },
 
     undo: () => {
@@ -1184,7 +1372,8 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     // Add these methods to the editor object
     setVideoStartTime: (time: number) => {
       if (!selectedNode || !editor.isVideoObject(selectedNode)) return;
-      const video = selectedNode.getVideoElement();
+      const video = selectedNode.getAttr('videoElement') as HTMLVideoElement;
+      if (!video || !video.duration) return;
       const newTime = Math.max(0, Math.min(time, video.duration));
       selectedNode.attrs.startTime = newTime;
       if (video.currentTime < newTime) {
@@ -1195,7 +1384,8 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
 
     setVideoEndTime: (time: number) => {
       if (!selectedNode || !editor.isVideoObject(selectedNode)) return;
-      const video = selectedNode.getVideoElement();
+      const video = selectedNode.getAttr('videoElement') as HTMLVideoElement;
+      if (!video || !video.duration) return;
       const newTime = Math.max(selectedNode.attrs.startTime, Math.min(time, video.duration));
       selectedNode.attrs.endTime = newTime;
       if (video.currentTime > newTime) {
@@ -1206,20 +1396,24 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
 
     getVideoStartTime: () => {
       if (!selectedNode || !editor.isVideoObject(selectedNode)) return 0;
+      const video = selectedNode.getAttr('videoElement') as HTMLVideoElement;
       return selectedNode.attrs.startTime || 0;
     },
 
     getVideoEndTime: () => {
       if (!selectedNode || !editor.isVideoObject(selectedNode)) return 0;
-      return selectedNode.attrs.endTime || selectedNode.getDuration();
+      const video = selectedNode.getAttr('videoElement') as HTMLVideoElement;
+      if (!video || !video.duration) return 0;
+      return selectedNode.attrs.endTime || video.duration;
     },
 
     getVideoDuration: () => {
       if (!selectedNode || !editor.isVideoObject(selectedNode)) return 0;
-      return selectedNode.getDuration();
+      const video = selectedNode.getAttr('videoElement') as HTMLVideoElement;
+      if (!video || !video.duration) return 0;
+      return video.duration;
     },
 
-    // Add this method to the editor object
     downloadTrimmedVideo: async () => {
       if (!selectedNode || !editor.isVideoObject(selectedNode)) {
         toast.error('No video selected for download');
@@ -1227,99 +1421,18 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       }
 
       try {
-        console.log('Starting video download process...');
-        const video = selectedNode.getVideoElement();
-        const startTime = selectedNode.attrs.startTime || 0;
-        const endTime = selectedNode.attrs.endTime || video.duration;
+        const video = selectedNode.getAttr('videoElement') as HTMLVideoElement;
+        const videoUrl = video.src;
         
-        console.log('Video details:', {
-          startTime,
-          endTime,
-          duration: video.duration,
-          videoWidth: video.videoWidth,
-          videoHeight: video.videoHeight
-        });
-
-        // Create canvas with video dimensions
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          throw new Error('Failed to get canvas context');
-        }
-
-        // Create MediaRecorder with appropriate settings
-        const stream = canvas.captureStream(30); // 30 FPS
-        const mediaRecorder = new MediaRecorder(stream, {
-          mimeType: 'video/webm;codecs=vp9',
-          videoBitsPerSecond: 5000000 // 5 Mbps
-        });
-
-        console.log('MediaRecorder created');
-        const chunks: Blob[] = [];
-
-        // Create a promise that resolves when recording is complete
-        const recordingComplete = new Promise<Blob>((resolve) => {
-          mediaRecorder.ondataavailable = (e) => {
-            console.log('Data chunk available:', e.data.size, 'bytes');
-            chunks.push(e.data);
-          };
-
-          mediaRecorder.onstop = () => {
-            console.log('Recording stopped, creating final video...');
-            const blob = new Blob(chunks, { type: 'video/webm' });
-            resolve(blob);
-          };
-        });
-        
-        // Start recording
-        mediaRecorder.start();
-        console.log('Recording started');
-
-        // Seek to start time
-        video.currentTime = startTime;
-        await new Promise<void>((resolve) => {
-          video.onseeked = () => resolve();
-        });
-
-        // Start playback
-        await video.play();
-        console.log('Video playback started');
-
-        // Function to draw frames
-        const drawFrame = () => {
-          if (video.currentTime >= endTime) {
-            console.log('Reached end time, stopping recording');
-            video.pause();
-            mediaRecorder.stop();
-            return;
-          }
-
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          requestAnimationFrame(drawFrame);
-        };
-
-        // Start drawing frames
-        drawFrame();
-
-        // Wait for the recording to complete and get the blob
-        const videoBlob = await recordingComplete;
-        console.log('Recording completed, initiating download...');
-
         // Create download link
-        const url = URL.createObjectURL(videoBlob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = 'trimmed-video.webm';
+        a.href = videoUrl;
+        a.download = 'video.mp4';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
 
-        // Reset video to start
-        video.currentTime = startTime;
-        console.log('Video download process completed');
+        console.log('Video download initiated');
       } catch (error) {
         console.error('Error during video download:', error);
         toast.error('Failed to download video: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -1331,7 +1444,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
         throw new Error('No video selected');
       }
 
-      const video = selectedNode.getVideoElement();
+      const video = selectedNode.getAttr('videoElement') as HTMLVideoElement;
       return video.src;
     },
 
@@ -1467,7 +1580,16 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     init, 
     addLayer, 
     getLayer,
-    handleSetActiveLayer
+    handleSetActiveLayer,
+    addImage,
+    editorState.fillColor,
+    editorState.fontFamily,
+    editorState.fontSize,
+    editorState.strokeColor,
+    editorState.strokeWidth,
+    restoreSelection,
+    saveSelection,
+    saveToHistory
   ]);
 
   return { editor, init };

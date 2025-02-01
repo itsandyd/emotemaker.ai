@@ -73,19 +73,12 @@ export interface VideoObject extends Konva.Group {
     videoElement: HTMLVideoElement;
     startTime: number;
     endTime: number;
-    brightness?: number;
-    contrast?: number;
-    saturation?: number;
-    isPlaying?: boolean;
+    duration: number;
+    brightness: number;
+    contrast: number;
+    saturation: number;
+    isPlaying: boolean;
   };
-  getVideoElement(): HTMLVideoElement;
-  play(): void;
-  pause(): void;
-  setStartTime(time: number): void;
-  setEndTime(time: number): void;
-  getDuration(): number;
-  getCurrentTime(): number;
-  setCurrentTime(time: number): void;
 }
 
 export interface VideoModelOption {
@@ -439,6 +432,7 @@ export interface KonvaEditor {
   getAnimation: (node: Konva.Node) => AnimationConfig | null;
   playAnimation: (node: Konva.Node) => void;
   stopAnimation: (node: Konva.Node) => void;
+  downloadAsGif: () => Promise<void>;
 }
 
 export interface KonvaTextOptions {
