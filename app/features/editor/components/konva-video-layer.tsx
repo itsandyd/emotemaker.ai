@@ -20,7 +20,7 @@ export const KonvaVideoLayer: React.FC<KonvaVideoLayerProps> = ({
     const animationRef = useRef<number>();
 
     useEffect(() => {
-        const videoElement = video.getVideoElement();
+        const videoElement = video.attrs.videoElement;
         const konvaVideo = videoRef.current;
         
         if (!konvaVideo || !videoElement) return;
@@ -68,7 +68,7 @@ export const KonvaVideoLayer: React.FC<KonvaVideoLayerProps> = ({
                     width={width}
                     height={height}
                     listening={false}
-                    image={video.getVideoElement()}
+                    image={video.attrs.videoElement}
                 />
             </Layer>
         </Stage>
