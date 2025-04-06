@@ -52,6 +52,37 @@ async function getTag(tagName: string) {
   }
 }
 
+async function triggerVerificationEmail(contactId: string) {
+  if (!process.env.ACTIVECAMPAIGN_API_URL || !process.env.ACTIVECAMPAIGN_API_KEY) {
+    console.error("ActiveCampaign credentials not configured");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${process.env.ACTIVECAMPAIGN_API_URL}/api/3/contacts/${contactId}/emailVerification`, {
+      method: 'POST',
+      headers: {
+        'Api-Token': process.env.ACTIVECAMPAIGN_API_KEY as string,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Failed to trigger verification email:", {
+        status: response.status,
+        statusText: response.statusText,
+        response: errorText
+      });
+      return;
+    }
+
+    console.log("Verification email triggered successfully for contact:", contactId);
+  } catch (error) {
+    console.error("Error triggering verification email:", error);
+  }
+}
+
 async function addToActiveCampaign(name: string, email: string) {
   if (!process.env.ACTIVECAMPAIGN_API_URL || !process.env.ACTIVECAMPAIGN_API_KEY) {
     console.error("ActiveCampaign credentials not configured");
@@ -87,6 +118,9 @@ async function addToActiveCampaign(name: string, email: string) {
     const contactData = await createResponse.json();
     console.log("Contact created:", contactData);
     const contactId = contactData.contact.id;
+
+    // Trigger verification email
+    await triggerVerificationEmail(contactId);
 
     // Add contact to list
     const listResponse = await fetch(`${process.env.ACTIVECAMPAIGN_API_URL}/api/3/contactLists`, {

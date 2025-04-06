@@ -69,6 +69,7 @@ export const KonvaVideoLayer: React.FC<KonvaVideoLayerProps> = ({
                     height={height}
                     listening={false}
                     image={video.attrs.videoElement}
+                    alt="Video"
                 />
             </Layer>
         </Stage>
