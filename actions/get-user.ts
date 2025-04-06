@@ -83,13 +83,15 @@ async function triggerVerificationEmail(contactId: string) {
   }
 }
 
-async function addToActiveCampaign(name: string, email: string) {
+async function addToActiveCampaign(name: string, email: string, userId: string) {
   if (!process.env.ACTIVECAMPAIGN_API_URL || !process.env.ACTIVECAMPAIGN_API_KEY) {
-    console.error("ActiveCampaign credentials not configured");
+    console.error("[ACTIVECAMPAIGN] Credentials not configured");
     return;
   }
 
   try {
+    console.log("[ACTIVECAMPAIGN] Starting contact creation for:", email);
+    
     // First create the contact
     const createResponse = await fetch(`${process.env.ACTIVECAMPAIGN_API_URL}/api/3/contacts`, {
       method: 'POST',
@@ -100,14 +102,20 @@ async function addToActiveCampaign(name: string, email: string) {
       body: JSON.stringify({
         contact: {
           email,
-          firstName: name
+          firstName: name,
+          fieldValues: [
+            {
+              field: "1", // Assuming field 1 is for userId
+              value: userId
+            }
+          ]
         }
       })
     });
 
     if (!createResponse.ok) {
       const errorText = await createResponse.text();
-      console.error("ActiveCampaign API error details:", {
+      console.error("[ACTIVECAMPAIGN] Contact creation failed:", {
         status: createResponse.status,
         statusText: createResponse.statusText,
         response: errorText
@@ -116,45 +124,49 @@ async function addToActiveCampaign(name: string, email: string) {
     }
 
     const contactData = await createResponse.json();
-    console.log("Contact created:", contactData);
+    console.log("[ACTIVECAMPAIGN] Contact created:", contactData);
     const contactId = contactData.contact.id;
 
-    // Trigger verification email
-    await triggerVerificationEmail(contactId);
-
     // Add contact to list
-    const listResponse = await fetch(`${process.env.ACTIVECAMPAIGN_API_URL}/api/3/contactLists`, {
-      method: 'POST',
-      headers: {
-        'Api-Token': process.env.ACTIVECAMPAIGN_API_KEY as string,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contactList: {
-          list: process.env.ACTIVECAMPAIGN_LIST_ID,
-          contact: contactId,
-          status: 1
-        }
-      })
-    });
-
-    if (!listResponse.ok) {
-      const errorText = await listResponse.text();
-      console.error("Failed to add contact to list:", {
-        status: listResponse.status,
-        statusText: listResponse.statusText,
-        response: errorText
+    if (process.env.ACTIVECAMPAIGN_LIST_ID) {
+      console.log("[ACTIVECAMPAIGN] Adding contact to list");
+      const listResponse = await fetch(`${process.env.ACTIVECAMPAIGN_API_URL}/api/3/contactLists`, {
+        method: 'POST',
+        headers: {
+          'Api-Token': process.env.ACTIVECAMPAIGN_API_KEY as string,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contactList: {
+            list: process.env.ACTIVECAMPAIGN_LIST_ID,
+            contact: contactId,
+            status: 1
+          }
+        })
       });
-      throw new Error(`Failed to add contact to list: ${errorText}`);
+
+      if (!listResponse.ok) {
+        const errorText = await listResponse.text();
+        console.error("[ACTIVECAMPAIGN] Failed to add contact to list:", {
+          status: listResponse.status,
+          statusText: listResponse.statusText,
+          response: errorText
+        });
+      } else {
+        console.log("[ACTIVECAMPAIGN] Contact added to list successfully");
+      }
     }
 
     // Get the existing Free Account tag
+    console.log("[ACTIVECAMPAIGN] Getting Free Account tag");
     const tagId = await getTag('Free Account');
     if (!tagId) {
-      throw new Error('Failed to get Free Account tag');
+      console.error("[ACTIVECAMPAIGN] Failed to get Free Account tag");
+      return;
     }
 
     // Add the tag to the contact
+    console.log("[ACTIVECAMPAIGN] Adding Free Account tag");
     const tagResponse = await fetch(`${process.env.ACTIVECAMPAIGN_API_URL}/api/3/contactTags`, {
       method: 'POST',
       headers: {
@@ -171,82 +183,102 @@ async function addToActiveCampaign(name: string, email: string) {
 
     if (!tagResponse.ok) {
       const errorText = await tagResponse.text();
-      console.error("Failed to add tag to contact:", {
+      console.error("[ACTIVECAMPAIGN] Failed to add tag to contact:", {
         status: tagResponse.status,
         statusText: tagResponse.statusText,
         response: errorText
       });
-      throw new Error(`Failed to add tag: ${errorText}`);
+    } else {
+      console.log("[ACTIVECAMPAIGN] Free Account tag added successfully");
     }
 
-    console.log("User added to ActiveCampaign with Free Account tag and list subscription");
+    console.log("[ACTIVECAMPAIGN] User successfully added to ActiveCampaign");
   } catch (error) {
-    console.error("Failed to add user to ActiveCampaign:", error);
+    console.error("[ACTIVECAMPAIGN] Error adding user to ActiveCampaign:", error);
     // Don't throw the error - we want to continue with user creation even if ActiveCampaign fails
   }
 }
+
+// Helper function to wait
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const getUser = async ({ userId, name, email }: UserProps) => {
   try {
     let user = null;
     let retryCount = 0;
     const maxRetries = 3;
+    const retryDelay = 1000; // 1 second delay between retries
 
     while (!user && retryCount < maxRetries) {
       try {
+        console.log(`[GET_USER] Attempt ${retryCount + 1}: Looking for user ${userId}`);
+        
         // Try to find the user first
         user = await db.user.findUnique({
           where: { id: userId },
         });
 
         if (!user) {
-          // User doesn't exist, try to create it
+          console.log(`[GET_USER] User ${userId} not found, attempting to create`);
           try {
             user = await db.user.create({
-              data: { id: userId, name, email },
+              data: { 
+                id: userId, 
+                name, 
+                email,
+                emailVerified: null
+              },
             });
             
-            // Only add to ActiveCampaign if we have both name and email
-            if (name && email) {
-              await addToActiveCampaign(name, email);
-            }
+            console.log(`[GET_USER] Successfully created user ${userId}`);
             break; // Successfully created user, exit loop
           } catch (error: any) {
+            console.error(`[GET_USER] Error creating user:`, error);
             if (error.code === 'P2002') {
-              // If unique constraint error, user was created by another request
-              // Continue loop to try finding it again
+              console.log(`[GET_USER] User already exists (P2002), retrying...`);
               retryCount++;
               continue;
             } else {
-              throw error; // Re-throw other errors
+              throw error;
             }
           }
         } else {
-          // User exists, update it
-          user = await db.user.update({
-            where: { id: userId },
-            data: { name, email },
-          });
-          break; // Successfully updated user, exit loop
+          console.log(`[GET_USER] Found existing user ${userId}, updating if needed`);
+          // User exists, update it if name or email changed
+          if (name !== user.name || email !== user.email) {
+            user = await db.user.update({
+              where: { id: userId },
+              data: { name, email },
+            });
+            console.log(`[GET_USER] Updated user ${userId}`);
+          }
+
+          // Only add to ActiveCampaign if we have both name and email AND the user is verified
+          if (name && email && user.emailVerified) {
+            console.log(`[GET_USER] User is verified, adding to ActiveCampaign`);
+            await addToActiveCampaign(name, email, userId);
+          }
+          break;
         }
       } catch (error: any) {
+        console.error(`[GET_USER] Error in attempt ${retryCount + 1}:`, error);
         if (error.code === 'P2025') {
-          // Record not found, retry
           retryCount++;
+          await wait(retryDelay);
           continue;
         }
-        throw error; // Re-throw other errors
+        throw error;
       }
     }
 
     if (!user) {
-      console.error(`Failed to get/create user after ${maxRetries} attempts`);
+      console.error(`[GET_USER] Failed to get/create user ${userId} after ${maxRetries} attempts`);
       return null;
     }
 
     return user;
   } catch (error) {
-    console.log("[GET_USER] Error:", error);
+    console.error("[GET_USER] Fatal error:", error);
     return null;
   }
 }

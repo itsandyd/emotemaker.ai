@@ -125,6 +125,7 @@
     "sharp": "^0.33.5",
     "sonner": "^1.4.41",
     "stripe": "^12.13.0",
+    "svix": "^1.63.1",
     "tailwind-merge": "^1.14.0",
     "tailwindcss": "3.3.3",
     "tailwindcss-animate": "^1.0.7",
