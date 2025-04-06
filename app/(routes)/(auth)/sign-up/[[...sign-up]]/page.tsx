@@ -27,7 +27,8 @@ export default function Page() {
               body: JSON.stringify({
                 email,
                 name,
-                userId
+                userId,
+                verificationUrl: `${window.location.origin}/verify?token=${userId}`
               }),
             });
 
@@ -39,14 +40,13 @@ export default function Page() {
             router.push('/verification-pending');
           } catch (error) {
             console.error('Error initiating verification:', error);
-            // Handle error appropriately
           }
         }
       }
     };
 
     handleSignUp();
-  }, [signUp, router]);
+  }, [signUp?.status, signUp?.emailAddress, signUp?.firstName, signUp?.createdUserId, router]);
 
-  return <SignUp routing="path" path="/sign-up" />;
+  return <SignUp routing="path" path="/sign-up" afterSignUpUrl="/verification-pending" />;
 }

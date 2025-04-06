@@ -52,31 +52,32 @@ export async function POST(req: Request) {
     verificationUrl.searchParams.append('contactId', contactId);
 
     // Send verification email through ActiveCampaign
-    const emailResponse = await fetch(`${process.env.ACTIVECAMPAIGN_API_URL}/api/3/emailActivities`, {
+    const emailResponse = await fetch(`${process.env.ACTIVECAMPAIGN_API_URL}/api/3/emails`, {
       method: 'POST',
       headers: {
         'Api-Token': process.env.ACTIVECAMPAIGN_API_KEY as string,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        emailActivity: {
-          contact: contactId,
-          email: email,
+        email: {
           subject: "Verify your email address",
-          htmlContent: `
+          html: `
             <h1>Welcome to EmoteMaker.ai!</h1>
             <p>Please verify your email address by clicking the link below:</p>
             <p><a href="${verificationUrl.toString()}">Verify Email Address</a></p>
             <p>If you did not create an account, you can safely ignore this email.</p>
           `,
-          textContent: `
+          plaintext: `
             Welcome to EmoteMaker.ai!
             
             Please verify your email address by clicking the link below:
             ${verificationUrl.toString()}
             
             If you did not create an account, you can safely ignore this email.
-          `
+          `,
+          fromEmail: process.env.ACTIVECAMPAIGN_FROM_EMAIL,
+          fromName: "EmoteMaker.ai",
+          to: email
         }
       })
     });

@@ -44,9 +44,8 @@ export async function POST(req: Request) {
   const eventType = evt.type;
 
   if (eventType === 'email.created') {
-    // Temporarily type as any while we resolve the correct EmailJSON type
     const data = evt.data as any;
-    const { to_email_address: toEmailAddress, subject, content: bodyHtml, text: bodyPlain } = data;
+    const { to_email_address: toEmailAddress, subject, email_address: emailContent } = data;
 
     try {
       // Create contact in ActiveCampaign if it doesn't exist
@@ -70,7 +69,7 @@ export async function POST(req: Request) {
       const contactData = await createResponse.json();
       const contactId = contactData.contact.id;
 
-      // Send email through ActiveCampaign
+      // Send verification email through ActiveCampaign
       const emailResponse = await fetch(`${process.env.ACTIVECAMPAIGN_API_URL}/api/3/emails`, {
         method: 'POST',
         headers: {
@@ -79,20 +78,23 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           email: {
-            subject,
-            html: bodyHtml,
-            plaintext: bodyPlain,
+            subject: "Verify your email address",
+            html: emailContent?.html || "Please verify your email address",
+            plaintext: emailContent?.text || "Please verify your email address",
             fromEmail: process.env.ACTIVECAMPAIGN_FROM_EMAIL,
             fromName: "EmoteMaker.ai",
-            to: toEmailAddress
+            to: toEmailAddress,
+            type: "verification"
           }
         })
       });
 
       if (!emailResponse.ok) {
+        console.error('Failed to send email:', await emailResponse.text());
         throw new Error('Failed to send email through ActiveCampaign');
       }
 
+      console.log('Successfully sent verification email through ActiveCampaign');
       return new Response('Success', { status: 200 });
     } catch (error) {
       console.error('Error processing webhook:', error);
