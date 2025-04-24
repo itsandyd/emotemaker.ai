@@ -86,7 +86,9 @@ export async function POST(req: Request) {
       model: "gpt-image-1",
       prompt: finalPrompt,
       size: resolution,
-      n: amount
+      n: amount,
+      background: "transparent",
+      quality: "auto"
     });
 
     // Get the base64 image data
