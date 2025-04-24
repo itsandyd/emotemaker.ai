@@ -50,6 +50,12 @@ const videoGeneration = {
       credits: 10
     },
     { 
+      name: "Kling 2",
+      description: "Next generation video model with enhanced motion and quality",
+      apiRoute: "/api/models/fal/kling-2",
+      credits: 10
+    },
+    { 
       name: "Minimax",
       description: "Fast model optimized for creating smooth, natural motion from still images.",
       apiRoute: "/api/models/fal/minimax-video",
@@ -138,7 +144,7 @@ export const EmoteGeneratorSidebar = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       prompt: "",
-      model: "Kling 1.6",
+      model: "Kling 2",
       duration: "5",
       ratio: "16:9"
     },
