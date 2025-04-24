@@ -88,6 +88,11 @@ export async function POST(req: Request) {
       quality: "standard",
     });
 
+    if (!response.data || response.data.length === 0) {
+      console.error('No data in OpenAI response');
+      return new NextResponse("Failed to generate image", { status: 500 });
+    }
+
     // Download the image from OpenAI URL
     const imageUrl = response.data[0].url;
     if (!imageUrl) {

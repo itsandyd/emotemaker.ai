@@ -62,16 +62,18 @@ export async function POST(
       return new NextResponse("Free trial has expired. Please upgrade to pro.", { status: 403 });
     }
 
-    const finalPrompt = `Design a bold and vibrant text-based icon featuring the word or phrase '${prompt}' in an ultra-bold, sans-serif font. Emphasize clarity and visual impact, making the word stand out against a solid white background. Opt for a single bright color for the text to ensure it is highly visible and readable at smaller sizes. The background should be solid white, enhancing the text’s visibility against various backgrounds. Avoid additional decorative elements to maintain simplicity and effectiveness, perfect for Twitch emotes.    `
+    const finalPrompt = `Design a bold and vibrant text-based icon featuring the word or phrase '${prompt}' in an ultra-bold, sans-serif font. Emphasize clarity and visual impact, making the word stand out against a solid white background. Opt for a single bright color for the text to ensure it is highly visible and readable at smaller sizes. The background should be solid white, enhancing the text's visibility against various backgrounds. Avoid additional decorative elements to maintain simplicity and effectiveness, perfect for Twitch emotes.    `
 
     const response = await openai.images.generate({
         model: "dall-e-3",
         prompt: finalPrompt,
         size: "1024x1024",
         quality: "standard",
-        // n: amount,
-        // size: resolution,
-      });
+    });
+
+    if (!response.data || response.data.length === 0) {
+        return new NextResponse("Failed to generate image", { status: 500 });
+    }
 
     console.log(response.data[0].url);
 

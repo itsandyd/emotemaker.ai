@@ -71,11 +71,11 @@ export async function POST(
       prompt: finalPrompt,
       size: '1024x1024',
       quality: "standard",
-      // response_format: "b64_json"
-      // n: amount,
-      // size: resolution,
     });
 
+    if (!response.data || response.data.length === 0) {
+        return new NextResponse("Failed to generate image", { status: 500 });
+    }
 
     console.log(response.data[0].b64_json);
     console.log(response.data[0].url);

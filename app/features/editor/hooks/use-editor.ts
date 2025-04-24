@@ -229,6 +229,14 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       const isTransformer = transformer.current && (target as any).getClassName?.() === 'Transformer';
 
       if (isWorkspace) {
+        // Before clearing selection, stop any video playback
+        if (selectedNode && editor.isVideoObject(selectedNode)) {
+          const videoElement = selectedNode.getAttr('videoElement') as HTMLVideoElement;
+          if (videoElement && !videoElement.paused) {
+            videoElement.pause();
+            selectedNode.setAttr('isPlaying', false);
+          }
+        }
         setSelectedNode(null);
         if (transformer.current) {
           transformer.current.nodes([]);
@@ -240,40 +248,49 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
 
       if (isTransformer) return;
 
-      // Check if the clicked element is in the active layer
-      const targetLayer = target.getLayer();
-      if (targetLayer !== activeLayer) {
-        console.log('Clicked element is not in active layer', {
-          targetLayer: targetLayer?.name(),
-          activeLayer: activeLayer?.name(),
-          target: target.getClassName()
-        });
-        return;
-      }
-
       // Find the parent group if the target is a child (like an Image inside a video group)
       let nodeToSelect: Konva.Node = target;
-      console.log('Initial target:', {
-        className: target.getClassName(),
-        attrs: target.getAttrs(),
-        layer: target.getLayer()?.name(),
-        parent: target.parent ? {
-          className: target.parent.getClassName(),
-          attrs: target.parent.getAttrs()
-        } : null
-      });
+      let targetLayer = target.getLayer();
 
       // First check if we clicked on a child of a video group
       if (target.parent instanceof Konva.Group && target.parent.getAttr('objectType') === 'video') {
         nodeToSelect = target.parent;
+        targetLayer = nodeToSelect.getLayer();
       } 
       // Then check if we clicked directly on a video group
       else if (target instanceof Konva.Group && target.getAttr('objectType') === 'video') {
         nodeToSelect = target;
+        targetLayer = nodeToSelect.getLayer();
       }
       // Finally check if we clicked on an image that is actually a video frame
       else if (target instanceof Konva.Image && target.parent?.getAttr('objectType') === 'video') {
         nodeToSelect = target.parent;
+        targetLayer = nodeToSelect.getLayer();
+      }
+
+      // If we found a layer, set it as active
+      if (targetLayer) {
+        setActiveLayer(targetLayer);
+      }
+
+      // If we're selecting a video node, ensure its state is preserved
+      if (nodeToSelect instanceof Konva.Group && nodeToSelect.getAttr('objectType') === 'video') {
+        const videoElement = nodeToSelect.getAttr('videoElement') as HTMLVideoElement;
+        if (videoElement) {
+          // Ensure the video state is properly initialized
+          if (nodeToSelect.getAttr('duration') === undefined) {
+            nodeToSelect.setAttr('duration', videoElement.duration);
+          }
+          if (nodeToSelect.getAttr('startTime') === undefined) {
+            nodeToSelect.setAttr('startTime', 0);
+          }
+          if (nodeToSelect.getAttr('endTime') === undefined) {
+            nodeToSelect.setAttr('endTime', videoElement.duration);
+          }
+          if (nodeToSelect.getAttr('isPlaying') === undefined) {
+            nodeToSelect.setAttr('isPlaying', !videoElement.paused);
+          }
+        }
       }
 
       console.log('Node to select:', {
@@ -281,7 +298,8 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
         objectType: nodeToSelect.getAttr('objectType'),
         hasVideoElement: nodeToSelect.getAttr('videoElement') instanceof HTMLVideoElement,
         className: nodeToSelect.getClassName(),
-        layer: nodeToSelect.getLayer()?.name()
+        layer: nodeToSelect.getLayer()?.name(),
+        attrs: nodeToSelect.getAttrs()
       });
 
       if (nodeToSelect instanceof Konva.Group || nodeToSelect instanceof Konva.Shape || nodeToSelect instanceof Konva.Image) {
@@ -649,29 +667,54 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       });
       
       // If it's a video object but missing some attributes, reinitialize them
-      if (isGroup && objectType === 'video' && videoElement instanceof HTMLVideoElement) {
+      if (isGroup && objectType === 'video') {
         const attrs = node.getAttrs();
-        const duration = videoElement.duration || attrs.duration || 0; // Use cached duration if available
         
-        // Only update duration-related attributes if we have a valid duration
-        if (duration > 0) {
-          if (attrs.startTime === undefined || attrs.startTime >= duration) {
-            attrs.startTime = 0;
-          }
-          if (attrs.endTime === undefined || attrs.endTime > duration || attrs.endTime === 0) {
-            attrs.endTime = duration;
-          }
-          attrs.duration = duration; // Cache the duration on the node
+        // Store the video URL if we have a video element
+        if (videoElement instanceof HTMLVideoElement && !attrs.videoUrl) {
+          attrs.videoUrl = videoElement.src;
         }
         
-        // Always ensure these attributes exist
-        if (attrs.brightness === undefined) attrs.brightness = 100;
-        if (attrs.contrast === undefined) attrs.contrast = 100;
-        if (attrs.saturation === undefined) attrs.saturation = 100;
-        if (attrs.isPlaying === undefined) attrs.isPlaying = !videoElement.paused;
+        // If we have a URL but no video element, recreate it
+        if (attrs.videoUrl && !(videoElement instanceof HTMLVideoElement)) {
+          const video = document.createElement('video');
+          video.crossOrigin = 'anonymous';
+          video.src = attrs.videoUrl;
+          video.muted = true;
+          video.loop = true;
+          video.playsInline = true;
+          attrs.videoElement = video;
+        }
         
-        node.setAttrs(attrs);
-        return true;
+        const currentVideoElement = attrs.videoElement;
+        if (currentVideoElement instanceof HTMLVideoElement) {
+          // Store the duration in the node's attributes if not already set
+          if (!attrs.duration && currentVideoElement.duration) {
+            attrs.duration = currentVideoElement.duration;
+          }
+          
+          // Use stored duration or video duration
+          const duration = attrs.duration || currentVideoElement.duration || 0;
+          
+          // Initialize or restore time-related attributes
+          if (attrs.startTime === undefined) {
+            attrs.startTime = 0;
+          }
+          if (attrs.endTime === undefined || attrs.endTime === 0) {
+            attrs.endTime = duration;
+          }
+          
+          // Ensure these attributes exist with default values
+          if (attrs.brightness === undefined) attrs.brightness = 100;
+          if (attrs.contrast === undefined) attrs.contrast = 100;
+          if (attrs.saturation === undefined) attrs.saturation = 100;
+          if (attrs.isPlaying === undefined) attrs.isPlaying = !currentVideoElement.paused;
+          
+          // Update the node's attributes
+          node.setAttrs(attrs);
+          
+          return true;
+        }
       }
       
       return false;
@@ -1041,23 +1084,44 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       throw new Error('Selected node is not an image');
     },
 
-    saveEmote: async (prompt: string, userId: string) => {
-      if (!stage) return;
+    saveEmote: async (prompt: string, userId: string): Promise<Emote | undefined> => {
+      if (!stage) return undefined;
       
       try {
-        const dataURL = stage.toDataURL();
+        let imageUrl: string;
+        let isVideo = false;
+
+        // Check if we're saving a video
+        if (selectedNode && editor.isVideoObject(selectedNode)) {
+          const attrs = selectedNode.getAttrs();
+          if (!attrs.videoUrl) {
+            throw new Error('Video URL not found');
+          }
+          imageUrl = attrs.videoUrl;
+          isVideo = true;
+        } else {
+          // For regular images/emotes, get the stage data URL
+          imageUrl = stage.toDataURL();
+        }
+
         const response = await axios.post<Emote>('/api/saveemote', {
           prompt,
-          imageUrl: dataURL,
+          imageUrl,
           style: "custom",
           model: "canvas",
-          userId
+          isVideo
         });
 
+        if (response.status !== 200) {
+          throw new Error('Failed to save emote');
+        }
+
+        toast.success('Emote saved successfully!');
         return response.data;
       } catch (error) {
         console.error('Failed to save emote:', error);
-        toast.error('Failed to save emote');
+        toast.error('Failed to save emote: ' + (error instanceof Error ? error.message : 'Unknown error'));
+        return undefined;
       }
     },
 
@@ -1370,63 +1434,76 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     },
 
     // Add these methods to the editor object
-    setVideoStartTime: (time: number) => {
-      if (!selectedNode || !editor.isVideoObject(selectedNode)) return;
-      const video = selectedNode.getAttr('videoElement') as HTMLVideoElement;
-      if (!video || !video.duration) return;
-      const newTime = Math.max(0, Math.min(time, video.duration));
-      selectedNode.attrs.startTime = newTime;
-      if (video.currentTime < newTime) {
-        video.currentTime = newTime;
-      }
-      activeLayer?.batchDraw();
-    },
-
-    setVideoEndTime: (time: number) => {
-      if (!selectedNode || !editor.isVideoObject(selectedNode)) return;
-      const video = selectedNode.getAttr('videoElement') as HTMLVideoElement;
-      if (!video || !video.duration) return;
-      const newTime = Math.max(selectedNode.attrs.startTime, Math.min(time, video.duration));
-      selectedNode.attrs.endTime = newTime;
-      if (video.currentTime > newTime) {
-        video.currentTime = selectedNode.attrs.startTime;
-      }
-      activeLayer?.batchDraw();
-    },
-
     getVideoStartTime: () => {
-      if (!selectedNode || !editor.isVideoObject(selectedNode)) return 0;
-      const video = selectedNode.getAttr('videoElement') as HTMLVideoElement;
-      return selectedNode.attrs.startTime || 0;
+      if (!selectedNode) return 0;
+      
+      // If we have an Image that's part of a video group, use the parent
+      const videoNode = selectedNode instanceof Konva.Image && selectedNode.parent?.getAttr('objectType') === 'video' 
+        ? selectedNode.parent 
+        : selectedNode;
+        
+      if (!editor.isVideoObject(videoNode)) return 0;
+      return videoNode.attrs.startTime || 0;
     },
 
     getVideoEndTime: () => {
-      if (!selectedNode || !editor.isVideoObject(selectedNode)) return 0;
-      const video = selectedNode.getAttr('videoElement') as HTMLVideoElement;
-      if (!video || !video.duration) return 0;
-      return selectedNode.attrs.endTime || video.duration;
+      if (!selectedNode) return 0;
+      
+      // If we have an Image that's part of a video group, use the parent
+      const videoNode = selectedNode instanceof Konva.Image && selectedNode.parent?.getAttr('objectType') === 'video' 
+        ? selectedNode.parent 
+        : selectedNode;
+        
+      if (!editor.isVideoObject(videoNode)) return 0;
+      return videoNode.attrs.endTime || videoNode.attrs.duration || 0;
     },
 
     getVideoDuration: () => {
-      if (!selectedNode || !editor.isVideoObject(selectedNode)) return 0;
-      const video = selectedNode.getAttr('videoElement') as HTMLVideoElement;
-      if (!video || !video.duration) return 0;
-      return video.duration;
+      if (!selectedNode) return 0;
+      
+      // If we have an Image that's part of a video group, use the parent
+      const videoNode = selectedNode instanceof Konva.Image && selectedNode.parent?.getAttr('objectType') === 'video' 
+        ? selectedNode.parent 
+        : selectedNode;
+        
+      if (!editor.isVideoObject(videoNode)) return 0;
+      return videoNode.attrs.duration || 0;
     },
 
     downloadTrimmedVideo: async () => {
-      if (!selectedNode || !editor.isVideoObject(selectedNode)) {
+      if (!selectedNode) {
         toast.error('No video selected for download');
         return;
       }
 
       try {
-        const video = selectedNode.getAttr('videoElement') as HTMLVideoElement;
-        const videoUrl = video.src;
-        
-        // Create download link
+        // Get the video node, handling the case where we might have selected the image inside the group
+        const videoNode = selectedNode instanceof Konva.Image && selectedNode.parent?.getAttr('objectType') === 'video'
+          ? selectedNode.parent
+          : selectedNode;
+
+        if (!editor.isVideoObject(videoNode)) {
+          throw new Error('Selected node is not a video');
+        }
+
+        // Get the video element and URL from the group's attributes
+        const attrs = videoNode.getAttrs();
+        const videoElement = attrs.videoElement as HTMLVideoElement;
+        const videoUrl = attrs.videoUrl;
+
+        if (!videoElement || !videoUrl) {
+          throw new Error('Video element or URL not found');
+        }
+
+        // Extract the original URL from the proxy URL
+        const originalUrl = videoUrl.split('?url=')[1];
+        if (!originalUrl) {
+          throw new Error('Could not extract original video URL');
+        }
+
+        // Create download link with the original URL
         const a = document.createElement('a');
-        a.href = videoUrl;
+        a.href = decodeURIComponent(originalUrl);
         a.download = 'video.mp4';
         document.body.appendChild(a);
         a.click();
@@ -1571,6 +1648,44 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       if (animation) {
         editor.setAnimation(node, animation);
       }
+    },
+
+    setVideoStartTime: (time: number) => {
+      if (!selectedNode) return;
+      
+      // If we have an Image that's part of a video group, use the parent
+      const videoNode = selectedNode instanceof Konva.Image && selectedNode.parent?.getAttr('objectType') === 'video' 
+        ? selectedNode.parent 
+        : selectedNode;
+        
+      if (!editor.isVideoObject(videoNode)) return;
+      const video = videoNode.getAttr('videoElement') as HTMLVideoElement;
+      if (!video || !video.duration) return;
+      const newTime = Math.max(0, Math.min(time, video.duration));
+      videoNode.attrs.startTime = newTime;
+      if (video.currentTime < newTime) {
+        video.currentTime = newTime;
+      }
+      activeLayer?.batchDraw();
+    },
+
+    setVideoEndTime: (time: number) => {
+      if (!selectedNode) return;
+      
+      // If we have an Image that's part of a video group, use the parent
+      const videoNode = selectedNode instanceof Konva.Image && selectedNode.parent?.getAttr('objectType') === 'video' 
+        ? selectedNode.parent 
+        : selectedNode;
+        
+      if (!editor.isVideoObject(videoNode)) return;
+      const video = videoNode.getAttr('videoElement') as HTMLVideoElement;
+      if (!video || !video.duration) return;
+      const newTime = Math.max(videoNode.attrs.startTime, Math.min(time, video.duration));
+      videoNode.attrs.endTime = newTime;
+      if (video.currentTime > newTime) {
+        video.currentTime = videoNode.attrs.startTime;
+      }
+      activeLayer?.batchDraw();
     },
   }), [
     stage, 

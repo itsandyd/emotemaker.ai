@@ -71,12 +71,15 @@ export async function POST(
         quality: "standard",
         // n: amount,
         // size: resolution,
-      });
+    });
+
+    if (!response.data || response.data.length === 0) {
+        return new NextResponse("Failed to generate image", { status: 500 });
+    }
 
     console.log(response.data[0].url);
     
     // Return the response data
-    
     return NextResponse.json(response.data);
     
   } catch (error) {

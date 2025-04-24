@@ -71,6 +71,7 @@ export interface VideoObject extends Konva.Group {
   attrs: {
     objectType: 'video';
     videoElement: HTMLVideoElement;
+    videoUrl: string;
     startTime: number;
     endTime: number;
     duration: number;

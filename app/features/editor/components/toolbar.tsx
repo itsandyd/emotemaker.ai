@@ -21,6 +21,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import Konva from "konva";
 
 interface ToolbarProps {
     editor: KonvaEditor | null;
@@ -391,13 +392,21 @@ export const Toolbar = ({
 
                                 let savedEmote;
                                 if (isVideo && editor.selectedNode && editor.isVideoObject(editor.selectedNode)) {
-                                    // Download the trimmed video first
-                                    await editor.downloadTrimmedVideo();
-                                    // For now, we'll use the original video URL
-                                    const videoUrl = editor.selectedNode.attrs.videoElement.src;
-                                    if (!videoUrl) {
-                                        throw new Error('Failed to get video URL');
+                                    console.log('Video node attributes:', editor.selectedNode.attrs);
+                                    // Get the video node, handling the case where we might have selected the image inside the group
+                                    const videoNode = editor.selectedNode instanceof Konva.Image && editor.selectedNode.parent?.getAttr('objectType') === 'video'
+                                        ? editor.selectedNode.parent
+                                        : editor.selectedNode;
+                                    
+                                    const videoElement = videoNode.getAttr('videoElement') as HTMLVideoElement;
+                                    if (!videoElement) {
+                                        throw new Error('Video element not found');
                                     }
+                                    const videoUrl = videoElement.src;
+                                    if (!videoUrl) {
+                                        throw new Error('Video URL not found');
+                                    }
+                                    console.log('Found video URL:', videoUrl);
                                     // Save the video as an emote with isVideo flag
                                     const response = await fetch('/api/saveemote', {
                                         method: 'POST',
@@ -407,9 +416,14 @@ export const Toolbar = ({
                                         body: JSON.stringify({
                                             prompt: currentPrompt,
                                             imageUrl: videoUrl,
+                                            style: "custom",
+                                            model: "canvas",
                                             isVideo: true,
                                         }),
                                     });
+                                    if (!response.ok) {
+                                        throw new Error('Failed to save video emote');
+                                    }
                                     savedEmote = await response.json();
                                 } else {
                                     // For regular emotes, use the existing saveEmote method
