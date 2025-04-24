@@ -60,7 +60,7 @@ const videoGeneration = {
 
 const formSchema = z.object({
   prompt: z.string().min(2, { message: "Prompt must be at least 2 characters." }),
-  model: z.string().default("DALL-E 3"),
+  model: z.string().default("IMAGE 1"),
   emoteType: z.string().default("chibi").optional(),
   // Image-specific options
   num_inference_steps: z.number().optional(),
@@ -129,7 +129,7 @@ export const EmoteGeneratorSidebar = ({
     resolver: zodResolver(formSchema),
     defaultValues: {
       prompt: "",
-      model: "DALL-E 3",
+      model: "IMAGE 1",
       emoteType: "chibi"
     }
   });

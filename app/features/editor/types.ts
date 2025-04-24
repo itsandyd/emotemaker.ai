@@ -180,6 +180,12 @@ export type EmoteStyle =
 export const generation: Generation = {
   models: [
     {
+      name: "IMAGE 1",
+      description: "GPT-powered image generation model with advanced understanding",
+      apiRoute: "/api/models/gpt-image-1",
+      options: [] as const
+    },
+    {
       name: "FLUX 1.1 Ultra",
       description: "Next generation text-to-image model with 10x accelerated speeds.",
       apiRoute: "/api/models/fal/fluxpro11ultra",
