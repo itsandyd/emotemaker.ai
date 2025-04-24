@@ -228,12 +228,17 @@ export const EmoteGeneratorSidebar = ({
           prompt_optimizer: true
         });
 
-        if (response.data?.video?.url) {
+        // Handle both array responses and single URL responses
+        if (Array.isArray(response.data)) {
+          setVideos(response.data);
+        } else if (response.data?.video?.url) {
           setVideos([response.data.video.url]);
-          toast.success('Video generated successfully!');
+        } else if (typeof response.data === 'string') {
+          setVideos([response.data]);
         } else {
           throw new Error("No video URL in response");
         }
+        toast.success('Video generated successfully!');
       } catch (error: any) {
         console.error("Error generating video:", error);
         toast.error(error.response?.data || 'Failed to generate video. Please try again.');
