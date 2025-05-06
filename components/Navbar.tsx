@@ -142,7 +142,7 @@ export const Navbar = ({
                   <div className="font-semibold text-sm">Community Hub</div>
                   <div className="text-xs text-gray-500 mt-1">Join our Discord for networking and support.</div>
                 </div>
-                <Link href="https://discord.com/invite/GSKRnD4hB6" className="absolute inset-0" target="_blank" rel="noopener noreferrer">
+                <Link href="https://discord.gg/tc7TWbnSKc" className="absolute inset-0" target="_blank" rel="noopener noreferrer">
                   <span className="sr-only">Go to Discord community</span>
                 </Link>
               </DropdownMenuItem>

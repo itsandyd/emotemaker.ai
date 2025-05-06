@@ -9,7 +9,7 @@ import { useUser } from '@clerk/nextjs'
 import { useProModal } from "../hooks/use-pro-modal";
 import { getUser } from "../actions/get-user";
 import Landing from "../components/Landing";
-import Footer from "../components/Footer";
+  import {Footer }from "../components/Footer";
 import { useRouter } from "next/navigation";
 
 export default function LandingPage() {

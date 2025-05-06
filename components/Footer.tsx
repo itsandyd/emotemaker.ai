@@ -1,124 +1,128 @@
-import { Button } from "@/components/ui/button"
-import { InstagramIcon, TwitterIcon, XIcon } from "lucide-react"
-import { BsDiscord } from "react-icons/bs"
+import { FaTwitter, FaDiscord, FaYoutube, FaInstagram } from "react-icons/fa";
 
-export default function Footer() {
+export function Footer() {
+  const currentYear = new Date().getFullYear();
+  
+  // const footerSections = [
+  //   {
+  //     title: "Product",
+  //     links: [
+  //       { label: "Features", href: "#features" },
+  //       { label: "Pricing", href: "#pricing" },
+  //       { label: "Gallery", href: "#gallery" },
+  //       { label: "Updates", href: "#" },
+  //     ],
+  //   },
+  //   {
+  //     title: "Resources",
+  //     links: [
+  //       { label: "Blog", href: "#" },
+  //       { label: "Tutorials", href: "#" },
+  //       { label: "Support", href: "#" },
+  //       { label: "Documentation", href: "#" },
+  //     ],
+  //   },
+  //   {
+  //     title: "Company",
+  //     links: [
+  //       { label: "About", href: "#" },
+  //       { label: "Careers", href: "#" },
+  //       { label: "Contact", href: "#contact" },
+  //       { label: "Press Kit", href: "#" },
+  //     ],
+  //   },
+  //   {
+  //     title: "Legal",
+  //     links: [
+  //       { label: "Terms", href: "#" },
+  //       { label: "Privacy", href: "#" },
+  //       { label: "Cookies", href: "#" },
+  //       { label: "Licenses", href: "#" },
+  //     ],
+  //   },
+  // ];
+
+  const socialLinks = [
+    // { icon: <FaTwitter />, href: "#", label: "Twitter" },
+    { icon: <FaDiscord />, href: "https://discord.gg/tc7TWbnSKc", label: "Discord" },
+    // { icon: <FaYoutube />, href: "#", label: "YouTube" },
+    { icon: <FaInstagram />, href: "https://www.instagram.com/emotemakerai", label: "Instagram" },
+  ];
+
   return (
-    <footer className="bg-white text-black py-8">
-      <div className="container mx-auto flex flex-col md:flex-row justify-between space-y-8 md:space-y-0">
-        <div className="flex flex-col space-y-4">
-          <h3 className="text-xl font-bold">EmoteMaker.ai</h3>
-          <p className="text-muted-foreground">
-            Empower your Twitch streams and Discord communities with custom, vibrant emotes created effortlessly.
-          </p>
+    <footer className="py-12 bg-white">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8">
+          <div className="mb-6 md:mb-0">
+            <a href="#" className="text-xl font-bold font-heading gradient-text">
+              EmoteMaker.ai
+            </a>
+            <p className="text-sm text-neutral-gray mt-2 max-w-md">
+              Create custom emotes for Twitch, Discord communities with custom,
+              values-based content creation platforms.
+            </p>
+          </div>
+
           <div className="flex space-x-4">
-            {/* <a href="#" className="p-2 bg-gray-800 rounded-full">
-              <TwitterIcon className="text-white w-5 h-5" />
-            </a> */}
-            <a href="https://discord.gg/GSKRnD4hB6" className="p-2 bg-gray-800 rounded-full">
-              <BsDiscord className="text-white w-5 h-5" />
-            </a>
-            <a href="https://instagram.com/emotemakerai" className="p-2 bg-gray-800 rounded-full">
-              <InstagramIcon className="text-white w-5 h-5" />
-            </a>
-            {/* <a href="#" className="p-2 bg-gray-800 rounded-full">
-              <YoutubeIcon className="text-white w-5 h-5" />
-            </a> */}
+            {socialLinks.map((link, index) => (
+              <a
+                key={index}
+                href={link.href}
+                aria-label={link.label}
+                className="w-10 h-10 rounded-full bg-neutral-light flex items-center justify-center text-neutral-gray hover:bg-primary-purple hover:text-white transition-colors"
+              >
+                {link.icon}
+              </a>
+            ))}
           </div>
         </div>
-        {/* <div className="flex flex-col space-y-4">
-          <h4 className="font-bold">PRODUCTS</h4>
-          <ul className="space-y-2">
-            <li>
-              <a href="#" className="text-muted-foreground">
-                Web App
-              </a>
-            </li>
-            <li>
-              <a href="#" className="text-muted-foreground">
-                Mobile Apps
-              </a>
-            </li>
-            <li>
-              <a href="#" className="text-muted-foreground">
-                API
-              </a>
-            </li>
-            <li>
-              <a href="#" className="text-muted-foreground">
-                Integrations
-              </a>
-            </li>
-          </ul>
+
+      {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+        {footerSections.map((section, index) => (
+          <div key={index}>
+            <h4 className="font-semibold mb-4">{section.title}</h4>
+            <ul className="space-y-2">
+              {section.links.map((link, linkIndex) => (
+                <li key={linkIndex}>
+                  <a
+                    href={link.href}
+                    className="text-sm text-neutral-gray hover:text-primary-purple transition-colors"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div> */}
+
+        <div className="border-t border-neutral-light pt-8 flex flex-col md:flex-row justify-between items-center">
+          <p className="text-sm text-neutral-gray mb-4 md:mb-0">
+            © {currentYear} EmoteMaker.ai. All rights reserved.
+          </p>
+          <div className="flex space-x-4">
+            <a
+              href="#"
+              className="text-xs text-neutral-gray hover:text-primary-purple transition-colors"
+            >
+              Privacy Policy
+            </a>
+            <a
+              href="#"
+              className="text-xs text-neutral-gray hover:text-primary-purple transition-colors"
+            >
+              Terms of Service
+            </a>
+            <a
+              href="#"
+              className="text-xs text-neutral-gray hover:text-primary-purple transition-colors"
+            >
+              Cookie Settings
+            </a>
+          </div>
         </div>
-        <div className="flex flex-col space-y-4">
-          <h4 className="font-bold">EXPLORE</h4>
-          <ul className="space-y-2">
-            <li>
-              <a href="#" className="text-muted-foreground">
-                Finetuning
-              </a>
-            </li>
-            <li>
-              <a href="#" className="text-muted-foreground">
-                Images
-              </a>
-            </li>
-            <li>
-              <a href="#" className="text-muted-foreground">
-                ControlNet
-              </a>
-            </li>
-            <li>
-              <a href="#" className="text-muted-foreground">
-                Canvas
-              </a>
-            </li>
-            <li>
-              <a href="#" className="text-muted-foreground">
-                Pixelate
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div className="flex flex-col space-y-4">
-          <h4 className="font-bold">SUPPORT</h4>
-          <ul className="space-y-2">
-            <li>
-              <a href="#" className="text-muted-foreground">
-                Knowledge Center
-              </a>
-            </li>
-            <li>
-              <a href="#" className="text-muted-foreground">
-                e-Learning Hub
-              </a>
-            </li>
-            <li>
-              <a href="#" className="text-muted-foreground">
-                Feedback
-              </a>
-            </li>
-            <li>
-              <a href="#" className="text-muted-foreground">
-                Contact us
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div className="flex flex-col space-y-4">
-          <Button variant="outline" className="w-full">
-            Web
-          </Button>
-          <Button variant="outline" className="w-full">
-            App Store
-          </Button>
-          <Button variant="outline" className="w-full">
-            Google Play
-          </Button>
-        </div> */}
       </div>
     </footer>
-  )
+  );
 }
-
