@@ -171,7 +171,7 @@ export default function Landing() {
       <HeroSection />
       <ProcessSection />
       <FeaturesSection />
-      <GallerySection />
+      {/* <GallerySection /> */}
       <TestimonialsSection />
       <CTASection />
     </motion.div>
