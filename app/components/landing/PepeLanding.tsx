@@ -71,7 +71,7 @@ export default function PepeLanding() {
                   alt="Pepe Face Splash Emote"
                   className="rounded-2xl"
                   height={600}
-                  src="/pepefacesplash.jpg"
+                  src="/pepethink.png"
                   style={{
                     objectFit: "cover",
                     width: "100%",
