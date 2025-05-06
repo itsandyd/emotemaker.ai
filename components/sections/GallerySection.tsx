@@ -12,7 +12,7 @@ export interface Emote {
 export const emotes: Emote[] = [
   {
     id: 1,
-    name: "capyBlush",
+    name: "capyblush",
     category: "Capybara",
     imageSrc: "/capyblush.png"
   },
@@ -20,11 +20,11 @@ export const emotes: Emote[] = [
     id: 2,
     name: "alienAngry",
     category: "Alien",
-    imageSrc: "/alienAngry.png"
+    imageSrc: "/alienangry.png"
   },
   {
     id: 3,
-    name: "shockedPup",
+    name: "shockedpup",
     category: "Pup",
     imageSrc: "/shockedpup.png"
   },
