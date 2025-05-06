@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 export interface Emote {
   id: number;
@@ -19,7 +20,7 @@ export const emotes: Emote[] = [
     id: 2,
     name: "alienAngry",
     category: "Alien",
-    imageSrc: "/alienangry.png"
+    imageSrc: "/alienAngry.png"
   },
   {
     id: 3,
@@ -54,7 +55,7 @@ export const emotes: Emote[] = [
   {
     id: 8,
     name: "ghostBoo",
-    category: "ghost",
+    category: "Ghost",
     imageSrc: "/ghostboo.png"
   },
   {
@@ -123,11 +124,16 @@ export function GallerySection() {
               className="emote-gallery-item bg-white rounded-xl p-3 shadow-sm transition-all duration-300 group cursor-pointer"
               variants={itemVariants}
             >
-              <img
-                src={emote.imageSrc}
-                alt={`${emote.name} emote`}
-                className="w-full aspect-square object-cover rounded-lg"
-              />
+              <div className="aspect-square relative overflow-hidden rounded-lg">
+                <Image
+                  src={emote.imageSrc}
+                  alt={`${emote.name} emote`}
+                  fill
+                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+                  className="object-contain"
+                  priority={emote.id <= 5} // Load first 5 images with priority
+                />
+              </div>
               <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <p className="text-xs font-medium truncate">{emote.name}</p>
                 <p className="text-xs text-neutral-gray">{emote.category}</p>
