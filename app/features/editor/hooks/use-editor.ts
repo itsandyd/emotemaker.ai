@@ -833,7 +833,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
 
       // Restore transformer state
       transformerStates.forEach(state => {
-        state.transformer.show();
+        state.transformer.visible(state.visible);
         if (state.transformer instanceof Konva.Transformer) {
           state.transformer.nodes(state.nodes);
         }
@@ -1100,8 +1100,29 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
           imageUrl = attrs.videoUrl;
           isVideo = true;
         } else {
-          // For regular images/emotes, get the stage data URL
+          // Store current transformer state
+          const currentTransformers = stage.find('Transformer');
+          const transformerStates = currentTransformers.map(tr => ({
+            transformer: tr,
+            visible: tr.visible(),
+            nodes: (tr as Konva.Transformer).nodes()
+          }));
+
+          // Hide all transformers
+          currentTransformers.forEach(tr => tr.hide());
+          stage.batchDraw();
+
+          // Generate the image without transformers visible
           imageUrl = stage.toDataURL();
+
+          // Restore transformer state
+          transformerStates.forEach(state => {
+            state.transformer.visible(state.visible);
+            if (state.transformer instanceof Konva.Transformer) {
+              state.transformer.nodes(state.nodes);
+            }
+          });
+          stage.batchDraw();
         }
 
         const response = await axios.post<Emote>('/api/saveemote', {
@@ -1490,26 +1511,165 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
         const attrs = videoNode.getAttrs();
         const videoElement = attrs.videoElement as HTMLVideoElement;
         const videoUrl = attrs.videoUrl;
+        const startTime = attrs.startTime || 0;
+        const endTime = attrs.endTime || videoElement.duration;
 
         if (!videoElement || !videoUrl) {
           throw new Error('Video element or URL not found');
         }
 
-        // Extract the original URL from the proxy URL
-        const originalUrl = videoUrl.split('?url=')[1];
-        if (!originalUrl) {
-          throw new Error('Could not extract original video URL');
+        // Extract original URL from proxy
+        let originalUrl = videoUrl;
+        if (videoUrl.includes('?url=')) {
+          originalUrl = decodeURIComponent(videoUrl.split('?url=')[1]);
         }
-
-        // Create download link with the original URL
-        const a = document.createElement('a');
-        a.href = decodeURIComponent(originalUrl);
-        a.download = 'video.mp4';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        console.log('Video download initiated');
+        
+        // Show processing message with specific details
+        const expectedDuration = endTime - startTime;
+        const processingToast = toast.loading(
+          `Processing video trim from ${startTime.toFixed(2)}s to ${endTime.toFixed(2)}s (${expectedDuration.toFixed(2)}s duration)...`
+        );
+        
+        try {
+          // Call the server-side trimming API
+          const trimResponse = await fetch('/api/video/trim', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              videoUrl: originalUrl,
+              startTime: startTime,
+              endTime: endTime
+            })
+          });
+          
+          if (!trimResponse.ok) {
+            toast.dismiss(processingToast);
+            const errorText = await trimResponse.text();
+            console.error('Trim API error:', errorText);
+            throw new Error(`Server error (${trimResponse.status}): ${errorText.substring(0, 100)}...`);
+          }
+          
+          const trimData = await trimResponse.json();
+          console.log('Trim response:', trimData);
+          
+          if (!trimData.success || !trimData.videoUrl) {
+            throw new Error(trimData.message || 'Failed to get trimmed video URL');
+          }
+          
+          // Update loading toast to indicate we're now verifying the video
+          toast.loading('Verifying trimmed video...', { id: processingToast });
+          
+          // Verify the trimmed video by loading it and checking its duration
+          const verificationVideo = document.createElement('video');
+          verificationVideo.crossOrigin = 'anonymous';
+          verificationVideo.muted = true;
+          verificationVideo.src = trimData.videoUrl;
+          
+          // Wait for video metadata to load to verify the duration
+          await new Promise<void>((resolve, reject) => {
+            const timeoutId = setTimeout(() => {
+              reject(new Error('Video metadata load timeout'));
+            }, 10000); // 10 second timeout
+            
+            verificationVideo.onloadedmetadata = () => {
+              clearTimeout(timeoutId);
+              resolve();
+            };
+            verificationVideo.onerror = () => {
+              clearTimeout(timeoutId);
+              reject(new Error('Failed to load video for verification'));
+            };
+            verificationVideo.load();
+          });
+          
+          const actualDuration = verificationVideo.duration;
+          const durationDifference = Math.abs(actualDuration - expectedDuration);
+          const isCorrectDuration = durationDifference < 0.5; // Allow half-second tolerance
+          
+          console.log('Video verification:', {
+            expectedDuration,
+            actualDuration,
+            durationDifference,
+            isCorrectDuration
+          });
+          
+          toast.dismiss(processingToast);
+          
+          if (isCorrectDuration) {
+            toast.success(`Video trimmed successfully! Duration: ${actualDuration.toFixed(2)}s`);
+          } else {
+            // If duration is incorrect, warn the user but still allow download
+            toast(`⚠️ Trimming may not be exact. Expected: ${expectedDuration.toFixed(2)}s, Actual: ${actualDuration.toFixed(2)}s`, {
+              style: {
+                backgroundColor: '#fff3cd',
+                color: '#856404',
+              },
+            });
+          }
+          
+          // Use fetch to get the video data as a blob
+          const videoResponse = await fetch(trimData.videoUrl);
+          if (!videoResponse.ok) {
+            throw new Error(`Failed to fetch trimmed video: ${videoResponse.statusText}`);
+          }
+          
+          const videoBlob = await videoResponse.blob();
+          
+          // Create an object URL for the blob
+          const blobUrl = URL.createObjectURL(videoBlob);
+          
+          // Create a download link that triggers an actual download
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = `trimmed-${startTime.toFixed(1)}-to-${endTime.toFixed(1)}s.mp4`;
+          document.body.appendChild(a);
+          a.click();
+          
+          // Clean up
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+          
+          console.log('Trimmed video downloaded successfully');
+          
+        } catch (trimError) {
+          console.error('Error during video trimming:', trimError);
+          toast.dismiss(processingToast);
+          toast.error('Video trimming failed: ' + (trimError instanceof Error ? trimError.message : 'Unknown error'));
+          
+          // Fallback to downloading the original video
+          toast.success('Falling back to downloading original video...');
+          
+          try {
+            // Use fetch to get the video data as a blob
+            const response = await fetch(originalUrl);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch video: ${response.statusText}`);
+            }
+            
+            const videoBlob = await response.blob();
+            
+            // Create an object URL for the blob
+            const blobUrl = URL.createObjectURL(videoBlob);
+            
+            // Create a download link that triggers an actual download
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = `video-trim-${startTime.toFixed(1)}-to-${endTime.toFixed(1)}s.mp4`;
+            document.body.appendChild(a);
+            a.click();
+            
+            // Clean up
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+            
+            console.log('Original video downloaded with trim points saved in filename:', { start: startTime, end: endTime });
+          } catch (downloadError) {
+            console.error('Error downloading video:', downloadError);
+            toast.error('Download error: ' + (downloadError instanceof Error ? downloadError.message : 'Unknown error'));
+          }
+        }
       } catch (error) {
         console.error('Error during video download:', error);
         toast.error('Failed to download video: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -1667,6 +1827,14 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
         video.currentTime = newTime;
       }
       activeLayer?.batchDraw();
+      
+      // Trigger a state update to reflect the change
+      if (selectedNode === videoNode) {
+        // Clone the node to trigger attribute change detection
+        const updatedNode = videoNode.clone();
+        setSelectedNode(updatedNode);
+        setSelectedNode(videoNode);
+      }
     },
 
     setVideoEndTime: (time: number) => {
@@ -1686,6 +1854,14 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
         video.currentTime = videoNode.attrs.startTime;
       }
       activeLayer?.batchDraw();
+      
+      // Trigger a state update to reflect the change
+      if (selectedNode === videoNode) {
+        // Clone the node to trigger attribute change detection
+        const updatedNode = videoNode.clone();
+        setSelectedNode(updatedNode);
+        setSelectedNode(videoNode);
+      }
     },
   }), [
     stage, 

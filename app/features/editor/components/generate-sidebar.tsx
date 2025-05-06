@@ -123,6 +123,7 @@ export const EmoteGeneratorSidebar = ({
   const [selectedModel, setSelectedModel] = useState(videoGeneration.models[0]);
   const ITEMS_PER_PAGE = 10;
   const { userId } = useAuth();
+  const [isAddingToCanvas, setIsAddingToCanvas] = useState(false);
 
   // Set the initial tab after component mounts
   useEffect(() => {
@@ -180,7 +181,10 @@ export const EmoteGeneratorSidebar = ({
   };
 
   const handleAddToCanvas = async (url: string) => {
+    if (isAddingToCanvas) return;
+    
     try {
+      setIsAddingToCanvas(true);
       if (!editor) {
         toast.error('Editor not initialized');
         return;
@@ -192,6 +196,8 @@ export const EmoteGeneratorSidebar = ({
     } catch (error) {
       console.error('Error adding to canvas:', error);
       toast.error('Failed to add to canvas');
+    } finally {
+      setIsAddingToCanvas(false);
     }
   };
 
@@ -292,175 +298,179 @@ export const EmoteGeneratorSidebar = ({
   return (
     <aside className={cn("bg-white relative border-r z-[40] w-[300px] h-full flex flex-col", activeTool === "emote-generator" ? "visible" : "hidden")}>
       <ToolSidebarHeader title="Generate" description="Generate images or videos" />
-      <div className="p-4">
-        <Tabs value={currentTab} onValueChange={(value) => setCurrentTab(value as "images" | "videos")}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="images" className="flex items-center gap-2">
-              <ImageIcon className="h-4 w-4" />
-              Images
-            </TabsTrigger>
-            <TabsTrigger value="videos" className="flex items-center gap-2">
-              <FileVideo className="h-4 w-4" />
-              Videos
-            </TabsTrigger>
-          </TabsList>
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <Tabs value={currentTab} onValueChange={(value) => setCurrentTab(value as "images" | "videos")} className="flex flex-col flex-1">
+          <div className="p-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="images" className="flex items-center gap-2">
+                <ImageIcon className="h-4 w-4" />
+                Images
+              </TabsTrigger>
+              <TabsTrigger value="videos" className="flex items-center gap-2">
+                <FileVideo className="h-4 w-4" />
+                Videos
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          <TabsContent value="images">
-            <ScrollArea className="p-2">
-              <Form {...imageForm}>
-                <form onSubmit={imageForm.handleSubmit(onSubmit)} className="space-y-4 px-2">
-                  <FormField
-                    control={imageForm.control}
-                    name="prompt"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Prompt</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="A space invader" 
-                            className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button 
-                    onClick={enhancePrompt} 
-                    disabled={isEnhancing || isGenerating} 
-                    className="w-full"
-                  >
-                    {isEnhancing ? <Loader className="animate-spin" /> : "Enhance Prompt (1 Credit)"}
-                  </Button>
-                  {enhancedPrompts.length > 0 && (
-                    <div className="mt-2">
-                      <Select onValueChange={handleSelectEnhancedPrompt}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select enhanced prompt" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {enhancedPrompts.map((prompt, index) => (
-                            <SelectItem key={index} value={prompt}>
-                              <div className="max-w-[250px] whitespace-normal break-words">
-                                {prompt}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  <Accordion type="single" collapsible>
-                    <AccordionItem value="model">
-                      <AccordionTrigger>Model</AccordionTrigger>
-                      <AccordionContent>
-                        <FormField
-                          control={imageForm.control}
-                          name="model"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Select 
-                                  onValueChange={field.onChange} 
-                                  defaultValue={field.value}
-                                >
-                                  <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
-                                    <SelectValue placeholder="Select model" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {generation.models.map((model) => (
-                                      <SelectItem key={model.name} value={model.name}>
-                                        {model.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </AccordionContent>
-                    </AccordionItem>
-
-                    <AccordionItem value="emoteType">
-                      <AccordionTrigger>Emote Type</AccordionTrigger>
-                      <AccordionContent>
-                        <FormField
-                          control={imageForm.control}
-                          name="emoteType"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select emote type" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="pixel">Pixel</SelectItem>
-                                    <SelectItem value="kawaii">Kawaii</SelectItem>
-                                    <SelectItem value="object">Object</SelectItem>
-                                    <SelectItem value="cute-bold-line">Cute Bold Line</SelectItem>
-                                    <SelectItem value="text-based">Text Based</SelectItem>
-                                    <SelectItem value="3d-based">3D Based</SelectItem>
-                                    <SelectItem value="pepe-based">Pepe Based</SelectItem>
-                                    <SelectItem value="sticker-based">Sticker Based</SelectItem>
-                                    <SelectItem value="chibi">Chibi</SelectItem>
-                                    <SelectItem value="meme">Meme</SelectItem>
-                                    <SelectItem value="ghibli">Ghibli</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                  <Button 
-                    type="submit" 
-                    disabled={isGenerating || isEnhancing} 
-                    className="w-full"
-                  >
-                    {isGenerating ? <Loader className="animate-spin" /> : "Generate Emote (1 Credit)"}
-                  </Button>
-                </form>
-              </Form>
-              {photos.length > 0 && (
-                <div className="mt-4 space-y-4">
-                  <div className="grid grid-cols-1 gap-4">
-                    {photos.map((photo, index) => (
-                      <div key={index} className="relative aspect-square rounded-lg overflow-hidden border">
-                        <Image
-                          src={`/api/proxy-image?url=${encodeURIComponent(photo)}`}
-                          alt={`Generated emote ${index + 1}`}
-                          fill
-                          className="object-cover"
-                        />
-                        <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/50 flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => handleAddToCanvas(photo)}
-                          >
-                            Add to Canvas
-                          </Button>
-                        </div>
+          <ScrollArea className="flex-1 h-[calc(100vh-180px)]">
+            <div className="p-4 pb-20">
+              <TabsContent value="images" className="mt-0 data-[state=active]:flex data-[state=active]:flex-col">
+                <Form {...imageForm}>
+                  <form onSubmit={imageForm.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={imageForm.control}
+                      name="prompt"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Prompt</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="A space invader" 
+                              className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0"
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button 
+                      onClick={enhancePrompt} 
+                      disabled={isEnhancing || isGenerating} 
+                      className="w-full"
+                    >
+                      {isEnhancing ? <Loader className="animate-spin" /> : "Enhance Prompt (1 Credit)"}
+                    </Button>
+                    {enhancedPrompts.length > 0 && (
+                      <div className="mt-2">
+                        <Select onValueChange={handleSelectEnhancedPrompt}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select enhanced prompt" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {enhancedPrompts.map((prompt, index) => (
+                              <SelectItem key={index} value={prompt}>
+                                <div className="max-w-[250px] whitespace-normal break-words">
+                                  {prompt}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </ScrollArea>
-          </TabsContent>
+                    )}
+                    <Accordion type="single" collapsible>
+                      <AccordionItem value="model">
+                        <AccordionTrigger>Model</AccordionTrigger>
+                        <AccordionContent>
+                          <FormField
+                            control={imageForm.control}
+                            name="model"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <Select 
+                                    onValueChange={field.onChange} 
+                                    defaultValue={field.value}
+                                  >
+                                    <SelectTrigger className="px-4 py-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-0">
+                                      <SelectValue placeholder="Select model" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {generation.models.map((model) => (
+                                        <SelectItem key={model.name} value={model.name}>
+                                          {model.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </AccordionContent>
+                      </AccordionItem>
 
-          <TabsContent value="videos">
-            <ScrollArea className="h-[calc(100vh-200px)]">
-              <div className="p-2">
+                      <AccordionItem value="emoteType">
+                        <AccordionTrigger>Emote Type</AccordionTrigger>
+                        <AccordionContent>
+                          <FormField
+                            control={imageForm.control}
+                            name="emoteType"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <SelectTrigger className="w-full">
+                                      <SelectValue placeholder="Select emote type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="pixel">Pixel</SelectItem>
+                                      <SelectItem value="kawaii">Kawaii</SelectItem>
+                                      <SelectItem value="object">Object</SelectItem>
+                                      <SelectItem value="cute-bold-line">Cute Bold Line</SelectItem>
+                                      <SelectItem value="text-based">Text Based</SelectItem>
+                                      <SelectItem value="3d-based">3D Based</SelectItem>
+                                      <SelectItem value="pepe-based">Pepe Based</SelectItem>
+                                      <SelectItem value="sticker-based">Sticker Based</SelectItem>
+                                      <SelectItem value="chibi">Chibi</SelectItem>
+                                      <SelectItem value="meme">Meme</SelectItem>
+                                      <SelectItem value="ghibli">Ghibli</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                    <Button 
+                      type="submit" 
+                      disabled={isGenerating || isEnhancing} 
+                      className="w-full"
+                    >
+                      {isGenerating ? <Loader className="animate-spin" /> : "Generate Emote (1 Credit)"}
+                    </Button>
+                  </form>
+                </Form>
+                {photos.length > 0 && (
+                  <div className="mt-4 space-y-4">
+                    <div className="grid grid-cols-1 gap-4">
+                      {photos.map((photo, index) => (
+                        <div 
+                          key={index} 
+                          className="relative aspect-square rounded-lg overflow-hidden border group hover:opacity-90 transition cursor-pointer"
+                          onClick={() => handleAddToCanvas(photo)}
+                        >
+                          <Image
+                            src={`/api/proxy-image?url=${encodeURIComponent(photo)}`}
+                            alt={`Generated emote ${index + 1}`}
+                            fill
+                            className="object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <span className="text-white font-medium">
+                              {isAddingToCanvas ? (
+                                <Loader className="h-5 w-5 animate-spin" />
+                              ) : (
+                                'Add to Canvas'
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="videos" className="mt-0 data-[state=active]:flex data-[state=active]:flex-col">
                 <Form {...videoForm}>
-                  <form onSubmit={videoForm.handleSubmit(onSubmit)} className="space-y-4 px-2">
+                  <form onSubmit={videoForm.handleSubmit(onSubmit)} className="space-y-4">
                     <div className="space-y-4">
                       <FormField
                         control={videoForm.control}
@@ -671,19 +681,17 @@ export const EmoteGeneratorSidebar = ({
                         </AccordionItem>
                       </Accordion>
                     </div>
-                    <div className="bg-white pt-4">
-                      <Button 
-                        type="submit" 
-                        disabled={isGenerating} 
-                        className="w-full"
-                      >
-                        {isGenerating ? (
-                          <Loader className="animate-spin" />
-                        ) : (
-                          `Generate Video (${videoGeneration.models.find(m => m.name === videoForm.watch("model"))?.credits || 10} Credits)`
-                        )}
-                      </Button>
-                    </div>
+                    <Button 
+                      type="submit" 
+                      disabled={isGenerating} 
+                      className="w-full"
+                    >
+                      {isGenerating ? (
+                        <Loader className="animate-spin" />
+                      ) : (
+                        `Generate Video (${videoGeneration.models.find(m => m.name === videoForm.watch("model"))?.credits || 10} Credits)`
+                      )}
+                    </Button>
                   </form>
                 </Form>
 
@@ -707,9 +715,9 @@ export const EmoteGeneratorSidebar = ({
                     ))}
                   </div>
                 )}
-              </div>
-            </ScrollArea>
-          </TabsContent>
+              </TabsContent>
+            </div>
+          </ScrollArea>
         </Tabs>
       </div>
       <ToolSidebarClose onClick={() => onChangeActiveTool("select")} />

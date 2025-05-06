@@ -15,7 +15,7 @@
     "@aws-sdk/s3-request-presigner": "^3.658.1",
     "@clerk/nextjs": "5.1.2",
     "@clerk/themes": "^2.1.10",
-    "@fal-ai/client": "^1.2.1",
+    "@fal-ai/client": "^1.4.0",
     "@fal-ai/serverless-proxy": "^0.7.4",
     "@hono/zod-validator": "^0.2.2",
     "@hookform/resolvers": "^3.3.2",

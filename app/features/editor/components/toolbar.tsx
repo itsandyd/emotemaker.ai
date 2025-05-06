@@ -90,6 +90,24 @@ export const Toolbar = ({
         }
     }, [editor?.selectedNode, editor]);
 
+    // Add an additional effect to handle changes to the timeline
+    useEffect(() => {
+        if (editor && editor.selectedNode && editor.isVideoObject(editor.selectedNode)) {
+            // Update the timeline whenever start/end times change in the editor
+            const videoObj = editor.selectedNode;
+            const newStart = videoObj.attrs.startTime;
+            const newEnd = videoObj.attrs.endTime;
+            
+            if (newStart !== undefined && newStart !== startTime) {
+                setStartTime(newStart);
+            }
+            
+            if (newEnd !== undefined && newEnd !== endTime) {
+                setEndTime(newEnd);
+            }
+        }
+    }, [editor?.selectedNode?.attrs?.startTime, editor?.selectedNode?.attrs?.endTime]);
+
     if (!selectedNode) {
         return (
             <div className="shrink-0 h-[62px] border-b border-gray-300 bg-white w-full flex items-center overflow-x-auto z-[49] p-2 gap-x-2" />

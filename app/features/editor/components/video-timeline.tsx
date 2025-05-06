@@ -24,11 +24,22 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
   const [thumbnails, setThumbnails] = useState<string[]>([]);
   const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState(false);
   const [isDragging, setIsDragging] = useState<'start' | 'end' | 'selection' | null>(null);
+  const [internalStartTime, setInternalStartTime] = useState(startTime);
+  const [internalEndTime, setInternalEndTime] = useState(endTime);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const selectionLengthRef = useRef(0);
 
   const MIN_GAP = 0.1; // Minimum 0.1 second gap between start and end
+
+  // Sync props to internal state
+  useEffect(() => {
+    setInternalStartTime(startTime);
+  }, [startTime]);
+
+  useEffect(() => {
+    setInternalEndTime(endTime);
+  }, [endTime]);
 
   useEffect(() => {
     const generateThumbnails = async () => {
@@ -57,7 +68,7 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
         newThumbnails.push(canvas.toDataURL('image/jpeg', 0.5));
       }
 
-      videoElement.currentTime = startTime;
+      videoElement.currentTime = internalStartTime;
       setThumbnails(newThumbnails);
       setIsGeneratingThumbnails(false);
     };
@@ -68,9 +79,9 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
   // Store the selection length when starting to drag the selection
   useEffect(() => {
     if (isDragging === 'selection') {
-      selectionLengthRef.current = endTime - startTime;
+      selectionLengthRef.current = internalEndTime - internalStartTime;
     }
-  }, [isDragging, startTime, endTime]);
+  }, [isDragging, internalStartTime, internalEndTime]);
 
   const handleMouseDown = (handle: 'start' | 'end' | 'selection') => (e: React.MouseEvent) => {
     setIsDragging(handle);
@@ -92,18 +103,22 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
       const newEndTime = newStartTime + selectionLength;
       
       if (newEndTime <= duration) {
+        setInternalStartTime(newStartTime);
+        setInternalEndTime(newEndTime);
         onStartTimeChange(newStartTime);
         onEndTimeChange(newEndTime);
       }
     } else if (isDragging === 'start') {
       // Ensure start time doesn't go beyond (endTime - MIN_GAP)
-      const maxStartTime = endTime - MIN_GAP;
+      const maxStartTime = internalEndTime - MIN_GAP;
       const clampedTime = Math.max(0, Math.min(maxStartTime, newTime));
+      setInternalStartTime(clampedTime);
       onStartTimeChange(clampedTime);
     } else {
       // Ensure end time doesn't go below (startTime + MIN_GAP)
-      const minEndTime = startTime + MIN_GAP;
+      const minEndTime = internalStartTime + MIN_GAP;
       const clampedTime = Math.max(minEndTime, Math.min(duration, newTime));
+      setInternalEndTime(clampedTime);
       onEndTimeChange(clampedTime);
     }
   };
@@ -121,11 +136,11 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
       document.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('mousemove', handleMouseMove as any);
     };
-  }, [isDragging]);
+  }, [isDragging, internalStartTime, internalEndTime]);
 
   // Add visual feedback for when handles can't move further
-  const isStartAtLimit = startTime >= endTime - MIN_GAP;
-  const isEndAtLimit = endTime <= startTime + MIN_GAP;
+  const isStartAtLimit = internalStartTime >= internalEndTime - MIN_GAP;
+  const isEndAtLimit = internalEndTime <= internalStartTime + MIN_GAP;
 
   return (
     <div className="w-full h-full flex items-center gap-2">
@@ -157,8 +172,8 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
             isDragging === 'selection' && "bg-blue-500/30"
           )}
           style={{
-            left: `${(startTime / duration) * 100}%`,
-            right: `${100 - (endTime / duration) * 100}%`,
+            left: `${(internalStartTime / duration) * 100}%`,
+            right: `${100 - (internalEndTime / duration) * 100}%`,
           }}
           onMouseDown={handleMouseDown('selection')}
         />
@@ -170,7 +185,7 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
             isDragging === 'start' ? "bg-blue-600" : "bg-blue-500",
             isStartAtLimit && "bg-red-500"
           )}
-          style={{ left: `${(startTime / duration) * 100}%` }}
+          style={{ left: `${(internalStartTime / duration) * 100}%` }}
           onMouseDown={handleMouseDown('start')}
         >
           <div className="absolute inset-y-0 -left-2 w-4 flex items-center justify-center">
@@ -180,7 +195,7 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
             )} />
           </div>
           <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] whitespace-nowrap font-medium">
-            Start: {startTime.toFixed(1)}s
+            Start: {internalStartTime.toFixed(1)}s
           </div>
         </div>
 
@@ -191,7 +206,7 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
             isDragging === 'end' ? "bg-blue-600" : "bg-blue-500",
             isEndAtLimit && "bg-red-500"
           )}
-          style={{ left: `${(endTime / duration) * 100}%` }}
+          style={{ left: `${(internalEndTime / duration) * 100}%` }}
           onMouseDown={handleMouseDown('end')}
         >
           <div className="absolute inset-y-0 -left-2 w-4 flex items-center justify-center">
@@ -201,13 +216,13 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
             )} />
           </div>
           <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] whitespace-nowrap font-medium">
-            End: {endTime.toFixed(1)}s
+            End: {internalEndTime.toFixed(1)}s
           </div>
         </div>
 
         {/* Duration indicator */}
         <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] whitespace-nowrap font-medium text-gray-500">
-          Duration: {(endTime - startTime).toFixed(1)}s
+          Duration: {(internalEndTime - internalStartTime).toFixed(1)}s
         </div>
       </div>
     </div>

@@ -173,7 +173,7 @@ export default function Landing() {
                 alt="AI-Generated Emotes Collage"
                 className="rounded-xl shadow-2xl"
                 height={600}
-                src="/hero.png"
+                src="emoteshowcase.svg"
                 style={{
                   aspectRatio: "800/600",
                   objectFit: "cover",
@@ -181,7 +181,7 @@ export default function Landing() {
                 width={800}
               />
               <div className="absolute -bottom-4 -right-4 bg-white p-4 rounded-lg shadow-lg">
-                <p className="font-bold text-[#7928CA]">20,000+ Emotes Created!</p>
+                <p className="font-bold text-[#7928CA]">30,000+ Emotes Created!</p>
               </div>
             </div>
           </div>
