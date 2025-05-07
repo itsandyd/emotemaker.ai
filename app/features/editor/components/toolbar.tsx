@@ -114,7 +114,7 @@ export const Toolbar = ({
 
     // Check if user has premium download permissions
     const hasPremiumDownload = useMemo(() => {
-        // Only allow Premium, Standard, and Legacy subscribers to download full resolution
+        // Only allow Team (PREMIUM), Pro (STANDARD), and Legacy subscribers to download full resolution
         return isActiveSubscriber && 
                (subscriptionType === 'PREMIUM' || // Team plan
                 subscriptionType === 'STANDARD' || // Pro plan
@@ -356,7 +356,7 @@ export const Toolbar = ({
                         <DropdownMenuItem
                             onClick={async () => {
                                 if (!hasPremiumDownload) {
-                                    toast.error('Premium subscription required for full-size downloads');
+                                    toast.error('Pro or Team plan required for full-resolution downloads');
                                     return;
                                 }
                                 setIsDownloadingEmote(true);
@@ -374,7 +374,7 @@ export const Toolbar = ({
                             ) : (
                                 <Lock className="size-4 mr-2" />
                             )}
-                            Download as PNG {!hasPremiumDownload && "(Premium)"}
+                            Download full resolution {!hasPremiumDownload && "(Pro or Team plan)"}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             onClick={async () => {
