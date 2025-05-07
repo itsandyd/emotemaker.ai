@@ -16,7 +16,7 @@ export const testimonials: Testimonial[] = [
     id: 1,
     name: "Scott Alderman",
     title: "Owner of Bebop Community Discord ",
-    avatar: "/beboplogo.png",
+    avatar: "/bebopem.png",
     content: "EmoteMaker.ai is a great tool that I use to create new emote ideas for my Discord server. I use it because I know I can count on the quality. It creates exactly what I ask for. It also keep improving with the times which is what I love about it, it keeps up with the current tech. I would highly recommend using EmoteMaker.ai to bring custom emojis and emotes to your virtual community!",
     rating: 5
   },
