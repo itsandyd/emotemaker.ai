@@ -377,6 +377,9 @@ export interface KonvaEditor {
     undoStack: Konva.Node[][];
     redoStack: Konva.Node[][];
   };
+  currentPrompt: string;
+  setCurrentPrompt: (prompt: string) => void;
+  formatFilename: (dimensions: string) => string;
   init: (container: HTMLDivElement, workspaceType: WorkspaceType) => void;
   setStage: (stage: Konva.Stage | null) => void;
   setActiveLayer: (layer: LayerType) => void;
@@ -389,7 +392,7 @@ export interface KonvaEditor {
   addShape: (type: ShapeType) => void;
   removeSelected: () => void;
   clear: () => void;
-  download: () => void;
+  download: () => Promise<void>;
   undo: () => void;
   redo: () => void;
   enableDrawingMode: () => void;
@@ -409,11 +412,9 @@ export interface KonvaEditor {
   inpaint: (prompt: string, maskUrl: string) => Promise<void>;
   removeBackground: () => Promise<void>;
   isVideoObject: (node: Konva.Node) => node is VideoObject;
-  // Mask-related methods
   generateMaskUrl: () => string;
   startDrawingMask: () => void;
   clearMask: () => void;
-  // Video-specific methods
   setVolume: (volume: number) => void;
   setPlaybackRate: (rate: number) => void;
   setBrightness: (value: number) => void;
@@ -424,7 +425,6 @@ export interface KonvaEditor {
   getBrightness: () => number;
   getContrast: () => number;
   getSaturation: () => number;
-  // Filter methods
   changeImageFilter: (filter: FilterType) => void;
   addGeneratedEmote: (url: string) => Promise<void>;
   setVideoStartTime: (time: number) => void;
@@ -434,12 +434,15 @@ export interface KonvaEditor {
   getVideoDuration: () => number;
   downloadTrimmedVideo: () => Promise<void>;
   getTrimmedVideoUrl: () => Promise<string>;
-  // Add animation types
   setAnimation: (node: Konva.Node, animation: AnimationConfig | null) => void;
   getAnimation: (node: Konva.Node) => AnimationConfig | null;
   playAnimation: (node: Konva.Node) => void;
   stopAnimation: (node: Konva.Node) => void;
   downloadAsGif: () => Promise<void>;
+  downloadForDiscord: () => Promise<void>;
+  downloadForTwitchSmall: () => Promise<void>;
+  downloadForTwitchMedium: () => Promise<void>;
+  downloadForTwitchLarge: () => Promise<void>;
 }
 
 export interface KonvaTextOptions {
@@ -482,32 +485,26 @@ export const DEFAULT_EDITOR_STATE: EditorState = {
   opacity: 1
 } as const;
 
-// Add type guard for Konva.Node
 export function isKonvaNode(node: any): node is Konva.Node {
   return node instanceof Konva.Node;
 }
 
-// Add type guard for Konva.Shape
 export function isKonvaShape(node: any): node is Konva.Shape {
   return node instanceof Konva.Shape;
 }
 
-// Add type guard for Konva.Group
 export function isKonvaGroup(node: any): node is Konva.Group {
   return node instanceof Konva.Group;
 }
 
-// Add type guard for Konva.Stage
 export function isKonvaStage(node: any): node is Konva.Stage {
   return node instanceof Konva.Stage;
 }
 
-// Add type guard for Konva.Transformer
 export function isKonvaTransformer(node: any): node is Konva.Transformer {
   return node instanceof Konva.Transformer;
 }
 
-// Enhancement types
 export type SelectOption = {
   type: "select";
   name: string;
@@ -600,7 +597,6 @@ export const enhancement: Enhancement = {
   ]
 };
 
-// Add these constants before the Enhancement types
 export const fonts = [
   'Arial',
   'Helvetica',
@@ -627,10 +623,8 @@ export const STROKE_DASH_ARRAY = [
   [10, 5, 2, 5], // Long dash-dot
 ];
 
-// Rename KonvaEditor to Editor for consistency
 export type Editor = KonvaEditor;
 
-// Add VideoEditor interface
 export interface VideoEditor {
   addVideo: (url: string) => Promise<void>;
   play: () => void;
@@ -696,7 +690,6 @@ export interface VideoEditor {
   destroy: () => void;
 }
 
-// Add animation types
 export type AnimationType = 'none' | 'shake' | 'spin' | 'bounce' | 'zoom' | 'slide' | 'flip' | 'pet';
 
 export interface AnimationConfig {

@@ -29,7 +29,11 @@ const EditorProjectIdPage = async ({
 
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { isAdmin: true }
+    select: { 
+      isAdmin: true,
+      subscriptionType: true,
+      isActiveSubscriber: true 
+    }
   });
 
   const isPro = await checkSubscription();
@@ -44,6 +48,8 @@ const EditorProjectIdPage = async ({
         userId={userId} 
         emotes={emotes}
         initialWorkspaceType={editorType}
+        subscriptionType={user?.subscriptionType || null}
+        isActiveSubscriber={user?.isActiveSubscriber || false}
       />
     </div>
   );

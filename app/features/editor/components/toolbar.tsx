@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ActiveTool, KonvaEditor, VideoObject } from "../types"
-import { AlignRight, ArrowDown, ArrowUp, ChevronDown, DownloadCloud, EraserIcon, FrameIcon, PaintBucket, PictureInPicture, PictureInPicture2, Save, Scissors, Trash2, Download, Undo, Redo, Pause, Play } from "lucide-react";
+import { AlignRight, ArrowDown, ArrowUp, ChevronDown, DownloadCloud, EraserIcon, FrameIcon, PaintBucket, PictureInPicture, PictureInPicture2, Save, Scissors, Trash2, Download, Undo, Redo, Pause, Play, Lock } from "lucide-react";
 import { BsBorderWidth } from "react-icons/bs";
 import { RxTransparencyGrid } from "react-icons/rx";
 import { TbColorFilter } from "react-icons/tb";
@@ -29,6 +29,8 @@ interface ToolbarProps {
     onChangeActiveTool: (tool: ActiveTool) => void;
     addEmote: (emote: Emote) => void;
     currentPrompt: string;
+    subscriptionType?: string | null;
+    isActiveSubscriber?: boolean;
 }
 
 export const Toolbar = ({
@@ -36,7 +38,9 @@ export const Toolbar = ({
     activeTool,
     onChangeActiveTool,
     addEmote,
-    currentPrompt
+    currentPrompt,
+    subscriptionType = null,
+    isActiveSubscriber = false
 }: ToolbarProps) => {
     const { userId } = useAuth();
     const [isRemovingBackground, setIsRemovingBackground] = useState(false);
@@ -106,7 +110,16 @@ export const Toolbar = ({
                 setEndTime(newEnd);
             }
         }
-    }, [editor?.selectedNode?.attrs?.startTime, editor?.selectedNode?.attrs?.endTime]);
+    }, [editor, startTime, endTime, editor?.selectedNode?.attrs?.startTime, editor?.selectedNode?.attrs?.endTime]);
+
+    // Check if user has premium download permissions
+    const hasPremiumDownload = useMemo(() => {
+        // Only allow Premium, Standard, and Legacy subscribers to download full resolution
+        return isActiveSubscriber && 
+               (subscriptionType === 'PREMIUM' || // Team plan
+                subscriptionType === 'STANDARD' || // Pro plan
+                subscriptionType === 'LEGACY');    // Old plan
+    }, [isActiveSubscriber, subscriptionType]);
 
     if (!selectedNode) {
         return (
@@ -342,6 +355,10 @@ export const Toolbar = ({
                     <DropdownMenuContent align="end">
                         <DropdownMenuItem
                             onClick={async () => {
+                                if (!hasPremiumDownload) {
+                                    toast.error('Premium subscription required for full-size downloads');
+                                    return;
+                                }
                                 setIsDownloadingEmote(true);
                                 try {
                                     await editor?.download();
@@ -350,9 +367,70 @@ export const Toolbar = ({
                                 }
                             }}
                             disabled={isDownloadingEmote || isDownloadingGif}
+                            className={!hasPremiumDownload ? "opacity-50" : ""}
+                        >
+                            {hasPremiumDownload ? (
+                                <Download className="size-4 mr-2" />
+                            ) : (
+                                <Lock className="size-4 mr-2" />
+                            )}
+                            Download as PNG {!hasPremiumDownload && "(Premium)"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onClick={async () => {
+                                setIsDownloadingEmote(true);
+                                try {
+                                    await editor?.downloadForDiscord();
+                                } finally {
+                                    setIsDownloadingEmote(false);
+                                }
+                            }}
+                            disabled={isDownloadingEmote || isDownloadingGif}
                         >
                             <Download className="size-4 mr-2" />
-                            Download as PNG
+                            Discord (128x128)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onClick={async () => {
+                                setIsDownloadingEmote(true);
+                                try {
+                                    await editor?.downloadForTwitchSmall();
+                                } finally {
+                                    setIsDownloadingEmote(false);
+                                }
+                            }}
+                            disabled={isDownloadingEmote || isDownloadingGif}
+                        >
+                            <Download className="size-4 mr-2" />
+                            Twitch Small (28x28)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onClick={async () => {
+                                setIsDownloadingEmote(true);
+                                try {
+                                    await editor?.downloadForTwitchMedium();
+                                } finally {
+                                    setIsDownloadingEmote(false);
+                                }
+                            }}
+                            disabled={isDownloadingEmote || isDownloadingGif}
+                        >
+                            <Download className="size-4 mr-2" />
+                            Twitch Medium (56x56)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onClick={async () => {
+                                setIsDownloadingEmote(true);
+                                try {
+                                    await editor?.downloadForTwitchLarge();
+                                } finally {
+                                    setIsDownloadingEmote(false);
+                                }
+                            }}
+                            disabled={isDownloadingEmote || isDownloadingGif}
+                        >
+                            <Download className="size-4 mr-2" />
+                            Twitch Large (112x112)
                         </DropdownMenuItem>
                         {selectedNode && editor?.getAnimation(selectedNode) && (
                             <DropdownMenuItem

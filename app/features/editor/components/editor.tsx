@@ -31,12 +31,16 @@ interface EditorProps {
   userId: string;
   emotes: Emote[];
   initialWorkspaceType?: WorkspaceType;
+  subscriptionType?: string | null;
+  isActiveSubscriber?: boolean;
 }
 
 export const Editor = ({ 
   userId, 
   emotes: initialEmotes,
-  initialWorkspaceType = 'image'
+  initialWorkspaceType = 'image',
+  subscriptionType = null,
+  isActiveSubscriber = false
 }: EditorProps) => {
   const [activeTool, setActiveTool] = useState<ActiveTool>("select")
   const [emotes, setEmotes] = useState<Emote[]>(initialEmotes)
@@ -62,6 +66,13 @@ export const Editor = ({
       setIsEditorReady(true);
     }
   }, [init, initialWorkspaceType, editor?.stage]);
+
+  // Sync the currentPrompt state with the editor
+  useEffect(() => {
+    if (editor) {
+      editor.setCurrentPrompt(currentPrompt);
+    }
+  }, [editor, currentPrompt]);
 
   // Setup auto-resize
   useAutoResize({
@@ -99,6 +110,11 @@ export const Editor = ({
   const addEmote = useCallback((newEmote: Emote) => {
     setEmotes(prevEmotes => [newEmote, ...prevEmotes])
   }, [])
+
+  const handleSetCurrentPrompt = useCallback((prompt: string) => {
+    setCurrentPrompt(prompt);
+    // The editor will be updated via the useEffect above
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -153,14 +169,14 @@ export const Editor = ({
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
           emotes={emotes}
-          setCurrentPrompt={setCurrentPrompt}
+          setCurrentPrompt={handleSetCurrentPrompt}
         />
         <VideoSidebar 
           editor={editor}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
           emotes={emotes}
-          setCurrentPrompt={setCurrentPrompt}
+          setCurrentPrompt={handleSetCurrentPrompt}
         />
         <EmoteGeneratorSidebar 
           editor={editor}
@@ -197,6 +213,8 @@ export const Editor = ({
             onChangeActiveTool={onChangeActiveTool}
             addEmote={addEmote}
             currentPrompt={currentPrompt}
+            subscriptionType={subscriptionType}
+            isActiveSubscriber={isActiveSubscriber}
           />
           <div className="flex-1 bg-muted relative overflow-auto">
             <div 

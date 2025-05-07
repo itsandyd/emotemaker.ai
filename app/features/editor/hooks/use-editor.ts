@@ -38,6 +38,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
   const [activeLayer, setActiveLayer] = useState<Konva.Layer | null>(null);
   const [selectedNode, setSelectedNode] = useState<Konva.Node | null>(null);
   const [editorState, setEditorState] = useState<EditorState>(DEFAULT_EDITOR_STATE);
+  const [currentPrompt, setCurrentPrompt] = useState<string>("");
   const transformer = useRef<Konva.Transformer | null>(null);
   const savedSelection = useRef<Konva.Node | null>(null);
   const history = useRef<{ undoStack: Konva.Node[][], redoStack: Konva.Node[][] }>({
@@ -492,6 +493,8 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     activeLayer,
     selectedNode,
     history: history.current,
+    currentPrompt,
+    setCurrentPrompt,
 
     init,
     setStage,
@@ -814,7 +817,7 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
     },
 
     download: () => {
-      if (!stage) return;
+      if (!stage) return Promise.reject("Stage is not initialized");
       
       // Store current transformer state
       const currentTransformers = stage.find('Transformer');
@@ -826,11 +829,12 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
 
       // Hide all transformers
       currentTransformers.forEach(tr => tr.hide());
-      stage.batchDraw();
-
-      // Create dataURL
-      const dataURL = stage.toDataURL();
-
+      
+      // Get the original stage image at full size
+      const dataURL = stage.toDataURL({
+        pixelRatio: 1
+      });
+      
       // Restore transformer state
       transformerStates.forEach(state => {
         state.transformer.visible(state.visible);
@@ -840,13 +844,347 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
       });
       stage.batchDraw();
 
-      // Download the image
+      // Download the image with prompt-based filename
       const link = document.createElement('a');
-      link.download = 'canvas.png';
+      link.download = editor.formatFilename("512x512");
       link.href = dataURL;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      return Promise.resolve();
+    },
+    
+    downloadForDiscord: () => {
+      if (!stage) return Promise.reject("Stage is not initialized");
+      
+      // Store current transformer state and stage properties
+      const currentTransformers = stage.find('Transformer');
+      const transformerStates = currentTransformers.map(tr => ({
+        transformer: tr,
+        visible: tr.visible(),
+        nodes: (tr as Konva.Transformer).nodes()
+      }));
+      
+      // Get the original stage dimensions
+      const originalWidth = stage.width();
+      const originalHeight = stage.height();
+      const originalScale = stage.scale();
+      
+      // Hide all transformers
+      currentTransformers.forEach(tr => tr.hide());
+      
+      // Create a temporary in-memory canvas to do the scaling
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = 128;
+      tempCanvas.height = 128;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      if (!tempCtx) {
+        return Promise.reject("Could not create canvas context");
+      }
+      
+      // Get the stage as an image
+      const dataURL = stage.toDataURL({
+        pixelRatio: 1
+      });
+      
+      // Create an image from the data URL
+      const img = new Image();
+      img.src = dataURL;
+      
+      // Return a promise that resolves when the image is loaded and processed
+      return new Promise((resolve, reject) => {
+        img.onload = () => {
+          // Clear the temporary canvas
+          tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+          
+          // Draw the image on the temporary canvas, preserving aspect ratio
+          const scale = Math.min(128 / img.width, 128 / img.height);
+          const scaledWidth = img.width * scale;
+          const scaledHeight = img.height * scale;
+          const offsetX = (128 - scaledWidth) / 2;
+          const offsetY = (128 - scaledHeight) / 2;
+          
+          // Draw with proper centering
+          tempCtx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+          
+          // Get the data URL from the temporary canvas
+          const scaledDataURL = tempCanvas.toDataURL('image/png');
+          
+          // Restore transformer state
+          transformerStates.forEach(state => {
+            state.transformer.visible(state.visible);
+            if (state.transformer instanceof Konva.Transformer) {
+              state.transformer.nodes(state.nodes);
+            }
+          });
+          stage.batchDraw();
+          
+          // Download the image with prompt-based filename
+          const link = document.createElement('a');
+          link.download = editor.formatFilename("discord_128x128");
+          link.href = scaledDataURL;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          resolve();
+        };
+        
+        img.onerror = () => {
+          reject("Failed to load stage image");
+        };
+      });
+    },
+    
+    downloadForTwitchSmall: () => {
+      if (!stage) return Promise.reject("Stage is not initialized");
+      
+      // Store current transformer state and stage properties
+      const currentTransformers = stage.find('Transformer');
+      const transformerStates = currentTransformers.map(tr => ({
+        transformer: tr,
+        visible: tr.visible(),
+        nodes: (tr as Konva.Transformer).nodes()
+      }));
+      
+      // Get the original stage dimensions
+      const originalWidth = stage.width();
+      const originalHeight = stage.height();
+      const originalScale = stage.scale();
+      
+      // Hide all transformers
+      currentTransformers.forEach(tr => tr.hide());
+      
+      // Create a temporary in-memory canvas to do the scaling
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = 28;
+      tempCanvas.height = 28;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      if (!tempCtx) {
+        return Promise.reject("Could not create canvas context");
+      }
+      
+      // Get the stage as an image
+      const dataURL = stage.toDataURL({
+        pixelRatio: 1
+      });
+      
+      // Create an image from the data URL
+      const img = new Image();
+      img.src = dataURL;
+      
+      // Return a promise that resolves when the image is loaded and processed
+      return new Promise((resolve, reject) => {
+        img.onload = () => {
+          // Clear the temporary canvas
+          tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+          
+          // Draw the image on the temporary canvas, preserving aspect ratio
+          const scale = Math.min(28 / img.width, 28 / img.height);
+          const scaledWidth = img.width * scale;
+          const scaledHeight = img.height * scale;
+          const offsetX = (28 - scaledWidth) / 2;
+          const offsetY = (28 - scaledHeight) / 2;
+          
+          // Draw with proper centering
+          tempCtx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+          
+          // Get the data URL from the temporary canvas
+          const scaledDataURL = tempCanvas.toDataURL('image/png');
+          
+          // Restore transformer state
+          transformerStates.forEach(state => {
+            state.transformer.visible(state.visible);
+            if (state.transformer instanceof Konva.Transformer) {
+              state.transformer.nodes(state.nodes);
+            }
+          });
+          stage.batchDraw();
+          
+          // Download the image with prompt-based filename
+          const link = document.createElement('a');
+          link.download = editor.formatFilename("twitch_28x28");
+          link.href = scaledDataURL;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          resolve();
+        };
+        
+        img.onerror = () => {
+          reject("Failed to load stage image");
+        };
+      });
+    },
+    
+    downloadForTwitchMedium: () => {
+      if (!stage) return Promise.reject("Stage is not initialized");
+      
+      // Store current transformer state and stage properties
+      const currentTransformers = stage.find('Transformer');
+      const transformerStates = currentTransformers.map(tr => ({
+        transformer: tr,
+        visible: tr.visible(),
+        nodes: (tr as Konva.Transformer).nodes()
+      }));
+      
+      // Get the original stage dimensions
+      const originalWidth = stage.width();
+      const originalHeight = stage.height();
+      const originalScale = stage.scale();
+      
+      // Hide all transformers
+      currentTransformers.forEach(tr => tr.hide());
+      
+      // Create a temporary in-memory canvas to do the scaling
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = 56;
+      tempCanvas.height = 56;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      if (!tempCtx) {
+        return Promise.reject("Could not create canvas context");
+      }
+      
+      // Get the stage as an image
+      const dataURL = stage.toDataURL({
+        pixelRatio: 1
+      });
+      
+      // Create an image from the data URL
+      const img = new Image();
+      img.src = dataURL;
+      
+      // Return a promise that resolves when the image is loaded and processed
+      return new Promise((resolve, reject) => {
+        img.onload = () => {
+          // Clear the temporary canvas
+          tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+          
+          // Draw the image on the temporary canvas, preserving aspect ratio
+          const scale = Math.min(56 / img.width, 56 / img.height);
+          const scaledWidth = img.width * scale;
+          const scaledHeight = img.height * scale;
+          const offsetX = (56 - scaledWidth) / 2;
+          const offsetY = (56 - scaledHeight) / 2;
+          
+          // Draw with proper centering
+          tempCtx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+          
+          // Get the data URL from the temporary canvas
+          const scaledDataURL = tempCanvas.toDataURL('image/png');
+          
+          // Restore transformer state
+          transformerStates.forEach(state => {
+            state.transformer.visible(state.visible);
+            if (state.transformer instanceof Konva.Transformer) {
+              state.transformer.nodes(state.nodes);
+            }
+          });
+          stage.batchDraw();
+          
+          // Download the image with prompt-based filename
+          const link = document.createElement('a');
+          link.download = editor.formatFilename("twitch_56x56");
+          link.href = scaledDataURL;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          resolve();
+        };
+        
+        img.onerror = () => {
+          reject("Failed to load stage image");
+        };
+      });
+    },
+    
+    downloadForTwitchLarge: () => {
+      if (!stage) return Promise.reject("Stage is not initialized");
+      
+      // Store current transformer state and stage properties
+      const currentTransformers = stage.find('Transformer');
+      const transformerStates = currentTransformers.map(tr => ({
+        transformer: tr,
+        visible: tr.visible(),
+        nodes: (tr as Konva.Transformer).nodes()
+      }));
+      
+      // Get the original stage dimensions
+      const originalWidth = stage.width();
+      const originalHeight = stage.height();
+      const originalScale = stage.scale();
+      
+      // Hide all transformers
+      currentTransformers.forEach(tr => tr.hide());
+      
+      // Create a temporary in-memory canvas to do the scaling
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = 112;
+      tempCanvas.height = 112;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      if (!tempCtx) {
+        return Promise.reject("Could not create canvas context");
+      }
+      
+      // Get the stage as an image
+      const dataURL = stage.toDataURL({
+        pixelRatio: 1
+      });
+      
+      // Create an image from the data URL
+      const img = new Image();
+      img.src = dataURL;
+      
+      // Return a promise that resolves when the image is loaded and processed
+      return new Promise((resolve, reject) => {
+        img.onload = () => {
+          // Clear the temporary canvas
+          tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+          
+          // Draw the image on the temporary canvas, preserving aspect ratio
+          const scale = Math.min(112 / img.width, 112 / img.height);
+          const scaledWidth = img.width * scale;
+          const scaledHeight = img.height * scale;
+          const offsetX = (112 - scaledWidth) / 2;
+          const offsetY = (112 - scaledHeight) / 2;
+          
+          // Draw with proper centering
+          tempCtx.drawImage(img, offsetX, offsetY, scaledWidth, scaledHeight);
+          
+          // Get the data URL from the temporary canvas
+          const scaledDataURL = tempCanvas.toDataURL('image/png');
+          
+          // Restore transformer state
+          transformerStates.forEach(state => {
+            state.transformer.visible(state.visible);
+            if (state.transformer instanceof Konva.Transformer) {
+              state.transformer.nodes(state.nodes);
+            }
+          });
+          stage.batchDraw();
+          
+          // Download the image with prompt-based filename
+          const link = document.createElement('a');
+          link.download = editor.formatFilename("twitch_112x112");
+          link.href = scaledDataURL;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          resolve();
+        };
+        
+        img.onerror = () => {
+          reject("Failed to load stage image");
+        };
+      });
     },
 
     downloadAsGif: async () => {
@@ -1863,11 +2201,31 @@ export const useEditor = ({ clearSelectionCallback }: UseEditorProps): UseEditor
         setSelectedNode(videoNode);
       }
     },
+
+    formatFilename: (dimensions: string): string => {
+      // Create a safe filename from the prompt
+      let filename = currentPrompt || "emote";
+      
+      // Replace invalid filename characters
+      filename = filename.replace(/[^\w\s-]/g, "");
+      
+      // Trim whitespace and replace spaces with underscores
+      filename = filename.trim().replace(/\s+/g, "_");
+      
+      // Truncate to reasonable length (40 characters max)
+      if (filename.length > 40) {
+        filename = filename.substring(0, 40);
+      }
+      
+      // Add dimensions and extension
+      return `${filename}_${dimensions}.png`;
+    },
   }), [
     stage, 
     layers, 
     activeLayer, 
-    selectedNode, 
+    selectedNode,
+    currentPrompt,
     init, 
     addLayer, 
     getLayer,

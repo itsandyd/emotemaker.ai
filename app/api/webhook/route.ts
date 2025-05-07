@@ -4,20 +4,25 @@ import { NextResponse } from "next/server";
 
 import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
+import { SubscriptionType } from "@prisma/client";
 
-const priceIdToCredits: { [priceId: string]: number } = {
+// Map price IDs to subscription types and credits
+const priceIdToSubInfo: { [priceId: string]: { credits: number, type: SubscriptionType } } = {
   // Monthly plans
-  'price_1Q8GL9IlERZTJMCm1b6Nuebe': 150,  // Creator plan (monthly)
-  'price_1OjApHIlERZTJMCmkGtSk4Wf': 300, // old plan
-  'price_1Q8GLiIlERZTJMCm1QFpLRh3': 500,  // Pro plan (monthly)
-  'price_1Q8GM2IlERZTJMCmgwEbI5tO': 1250, // Team plan (monthly)
+  'price_1Q8GL9IlERZTJMCm1b6Nuebe': { credits: 150, type: 'BASIC' },    // Creator plan (monthly)
+  'price_1OjApHIlERZTJMCmkGtSk4Wf': { credits: 300, type: 'LEGACY' },   // old plan
+  'price_1Q8GLiIlERZTJMCm1QFpLRh3': { credits: 500, type: 'STANDARD' }, // Pro plan (monthly)
+  'price_1Q8GM2IlERZTJMCmgwEbI5tO': { credits: 1250, type: 'PREMIUM' }, // Team plan (monthly)
   
   // Annual plans
-  'price_1PTXsjIlERZTJMCmk9e50tI7': 1800,  // Creator plan (annually)
-  'price_1PTXt2IlERZTJMCmQYmhHVQV': 6000,  // Pro plan (annually)
-  'price_1PTXtHIlERZTJMCmVgzahz20': 15000, // Team plan (annually)
+  'price_1PTXsjIlERZTJMCmk9e50tI7': { credits: 1800, type: 'BASIC' },    // Creator plan (annually)
+  'price_1PTXt2IlERZTJMCmQYmhHVQV': { credits: 6000, type: 'STANDARD' }, // Pro plan (annually)
+  'price_1PTXtHIlERZTJMCmVgzahz20': { credits: 15000, type: 'PREMIUM' }, // Team plan (annually)
+};
 
-  // Credits
+// Helper function to get credits and subscription type
+const getSubInfo = (priceId: string) => {
+  return priceIdToSubInfo[priceId] || { credits: 0, type: 'FREE' };
 };
 
 export async function POST(req: Request) {
@@ -54,14 +59,18 @@ export async function POST(req: Request) {
         return new NextResponse("Price not found in line items", { status: 400 });
       }
 
-      const creditsToAdd = priceIdToCredits[lineItems.data[0].price.id] || 0;
+      const priceId = lineItems.data[0].price.id;
+      const { credits: creditsToAdd, type: subscriptionType } = getSubInfo(priceId);
 
+      // Update user with credits and subscription type
       await db.user.update({
         where: { id: session?.metadata?.userId },
         data: {
           credits: {
             increment: creditsToAdd,
           },
+          subscriptionType,
+          isActiveSubscriber: true,
         },
       });
 
@@ -92,8 +101,8 @@ export async function POST(req: Request) {
       }
 
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-
-      const creditsToAddInvoice = priceIdToCredits[subscription.items.data[0].price.id] || 0;
+      const invoicePriceId = subscription.items.data[0].price.id;
+      const { credits: creditsToAddInvoice, type: invoiceSubscriptionType } = getSubInfo(invoicePriceId);
 
       // Retrieve the userSubscription record to get the userId
       const userSubscription = await db.userSubscription.findUnique({
@@ -105,7 +114,7 @@ export async function POST(req: Request) {
           stripeSubscriptionId: subscription.id,
         },
         data: {
-          stripePriceId: subscription.items.data[0].price.id,
+          stripePriceId: invoicePriceId,
           stripeCurrentPeriodEnd: new Date(
             subscription.current_period_end * 1000
           ),
@@ -113,12 +122,15 @@ export async function POST(req: Request) {
       });
 
       if (userSubscription) {
+        // Update user with credits and subscription type
         await db.user.update({
           where: { id: userSubscription.userId },
           data: {
             credits: {
               increment: creditsToAddInvoice,
             },
+            subscriptionType: invoiceSubscriptionType,
+            isActiveSubscriber: true,
           },
         });
       }
