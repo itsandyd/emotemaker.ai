@@ -38,13 +38,13 @@ export const emotes: Emote[] = [
     id: 5,
     name: "alienConfused",
     category: "Alien",
-    imageSrc: "/gallery/alienconfused1.png"
+    imageSrc: "/gallery/alienc.png"
   },
   {
     id: 6,
     name: "slothLove",
     category: "Sloth",
-    imageSrc: "/gallery/slothlove1.png"
+    imageSrc: "/gallery/slothl.png"
   },
   {
     id: 7,
