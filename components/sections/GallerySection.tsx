@@ -131,7 +131,8 @@ export function GallerySection() {
                   width={150}
                   height={150}
                   className="object-contain w-full h-full"
-                  priority={emote.id <= 5} // Load first 5 images with priority
+                  unoptimized
+                //   priority={emote.id <= 5} // Load first 5 images with priority
                 />
               </div>
               <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -13,6 +13,7 @@ const nextConfig = {
       "emotemaker-pldnvxto6-emotemaker.vercel.app",
       "emotemaker.ai",
     ],
+    unoptimized: true,
   },
   webpack: (config, { isServer }) => {
     if (isServer) {
