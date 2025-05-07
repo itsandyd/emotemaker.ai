@@ -20,7 +20,7 @@ export const emotes: Emote[] = [
     id: 2,
     name: "alienAngry",
     category: "Alien",
-    imageSrc: "/gallery/alienangry1.png"
+    imageSrc: "/gallery/angryalien1.png"
   },
   {
     id: 3,
