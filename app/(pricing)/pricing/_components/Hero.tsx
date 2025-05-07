@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import Link from "next/link"
-import { CreditCardIcon, DollarSignIcon, DotIcon, Star } from "lucide-react"
+import { CreditCardIcon, DollarSignIcon, DotIcon, Star, Download } from "lucide-react"
 import { useState } from "react"
 import axios from "axios"
 import toast from "react-hot-toast"
@@ -21,9 +21,9 @@ const pricingPlans = [
     monthlyCredits: 150,
     yearlyCredits: 1800,
     features: [
-      "Generate unique emotes",
-      "Single prompt creation",
-      "Additional credits available"
+      "Standard resolution emotes",
+      "Basic editing tools",
+      "Platform-specific sizes (Discord, Twitch)",
     ]
   },
   {
@@ -33,9 +33,10 @@ const pricingPlans = [
     monthlyCredits: 500,
     yearlyCredits: 6000,
     features: [
-      "All Creator features",
-      "Priority support",
-      "Advanced customization options"
+      "Advanced AI features",
+      "Premium editing tools",
+      "Platform-specific sizes",
+      "Full resolution downloads for merchandise"
     ]
   },
   {
@@ -47,7 +48,8 @@ const pricingPlans = [
     features: [
       "All Pro features",
       "Team collaboration tools",
-      "Dedicated account manager"
+      "Priority support",
+      "Full resolution downloads for merchandise"
     ]
   }
 ]
@@ -120,8 +122,17 @@ export const PricingHero = ({
                     </li>
                     {plan.features.map((feature, index) => (
                       <li key={index} className="flex items-center gap-2">
-                        <Star className="h-5 w-5 text-purple-500" />
-                        <span>{feature}</span>
+                        {feature.includes("Full resolution downloads") ? (
+                          <>
+                            <Download className="h-5 w-5 text-purple-500" />
+                            <span className="font-semibold">{feature}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Star className="h-5 w-5 text-purple-500" />
+                            <span>{feature}</span>
+                          </>
+                        )}
                       </li>
                     ))}
                   </ul>
