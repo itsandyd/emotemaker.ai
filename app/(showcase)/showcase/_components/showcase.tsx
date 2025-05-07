@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
+import { PlayCircle, FileVideo } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -27,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge";
 
 interface ShowcaseProps {
   initialEmotes: Emote[];
@@ -157,17 +159,41 @@ export default function Showcase({
               <Card key={emote.id} className="group hover:shadow-lg transition-shadow duration-200">
                 <CardContent className="p-4">
                   <div className="aspect-square relative overflow-hidden rounded-lg mb-4">
-                    <img
-                      alt={emote.prompt || "Emote"}
-                      className="object-cover group-hover:scale-105 transition-transform duration-200"
-                      src={emote.imageUrl || '/placeholder-image.jpg'}
-                      width={300}
-                      height={300}
-                      loading="lazy"
-                    />
+                    {emote.isVideo ? (
+                      <>
+                        <div className="absolute inset-0 flex items-center justify-center z-10">
+                          <PlayCircle className="w-12 h-12 text-white opacity-70 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                        <video
+                          className="absolute inset-0 w-full h-full object-cover"
+                          src={emote.imageUrl || '/placeholder-video.mp4'}
+                          muted
+                          loop
+                          playsInline
+                        />
+                      </>
+                    ) : (
+                      <img
+                        alt={emote.prompt || "Emote"}
+                        className="object-cover group-hover:scale-105 transition-transform duration-200"
+                        src={emote.imageUrl || '/placeholder-image.jpg'}
+                        width={300}
+                        height={300}
+                        loading="lazy"
+                      />
+                    )}
+                    {emote.isVideo && (
+                      <Badge className="absolute top-2 right-2 bg-red-500 hover:bg-red-600">
+                        <FileVideo className="h-3 w-3 mr-1" />
+                        Video
+                      </Badge>
+                    )}
                   </div>
                   <h3 className="font-medium text-sm truncate">{emote.prompt || "Untitled Emote"}</h3>
-                  <p className="text-xs text-gray-500">{emote.style || "No style specified"}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-500">{emote.style || "No style specified"}</p>
+                    {emote.isVideo && <FileVideo className="h-4 w-4 text-gray-400" />}
+                  </div>
                 </CardContent>
                 <CardFooter className="p-4 pt-0">
                   <Link href={`/emote/${emote.id}`} passHref className="w-full">

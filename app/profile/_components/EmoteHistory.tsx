@@ -80,7 +80,7 @@ export const EmoteHistoryCard = ({ emotes, userId, isPremiumUser = false }: Emot
                 prompt={emote.prompt}
                 isPremiumUser={isPremiumUser}
                 isVideo={emote.isVideo || false}
-                isGif={false} // You might need to add this field to your database schema
+                isGif={(emote.imageUrl?.toLowerCase().endsWith('.gif') || false) && !(emote.isVideo || false)}
               />
             ))}
           </div>
