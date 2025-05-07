@@ -10,6 +10,8 @@ const nextConfig = {
       "files.stripe.com",
       "oaidalleapiprodscus.blob.core.windows.net",
       "pprcanvas.s3.amazonaws.com",
+      "emotemaker-pldnvxto6-emotemaker.vercel.app",
+      "emotemaker.ai",
     ],
   },
   webpack: (config, { isServer }) => {

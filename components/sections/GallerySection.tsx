@@ -128,9 +128,9 @@ export function GallerySection() {
                 <Image
                   src={emote.imageSrc}
                   alt={`${emote.name} emote`}
-                  fill
-                  sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
-                  className="object-contain"
+                  width={150}
+                  height={150}
+                  className="object-contain w-full h-full"
                   priority={emote.id <= 5} // Load first 5 images with priority
                 />
               </div>
