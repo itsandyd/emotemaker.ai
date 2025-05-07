@@ -127,7 +127,11 @@ export async function POST(req: Request) {
       data: {
         userId: id,
         prompt: prompt,
+        style: emoteType,
+        model: "gpt-image-1",
         imageUrl: uploadResult.Location,
+        isVideo: false,
+        originalCreatorId: id,
       },
     });
 
