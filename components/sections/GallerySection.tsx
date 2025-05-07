@@ -20,43 +20,43 @@ export const emotes: Emote[] = [
     id: 2,
     name: "alienAngry",
     category: "Alien",
-    imageSrc: "/alienangry.png"
+    imageSrc: "/gallery/alienangry1.png"
   },
   {
     id: 3,
     name: "shockedpup",
     category: "Pup",
-    imageSrc: "/shockedpup.png"
+    imageSrc: "/gallery/shockedpup1.png"
   },
   {
     id: 4,
     name: "bambooPanda",
     category: "Panda",
-    imageSrc: "/bamboopanda.png"
+    imageSrc: "/gallery/bamboopanda1.png"
   },
   {
     id: 5,
     name: "alienConfused",
     category: "Alien",
-    imageSrc: "/alienconfused.png"
+    imageSrc: "/gallery/alienconfused1.png"
   },
   {
     id: 6,
     name: "slothLove",
     category: "Sloth",
-    imageSrc: "/slothlove.png"
+    imageSrc: "/gallery/slothlove1.png"
   },
   {
     id: 7,
     name: "pepeThink",
     category: "Pepe",
-    imageSrc: "/pepethink.png"
+    imageSrc: "/gallery/pepethink1.png"
   },
   {
     id: 8,
     name: "ghostBoo",
     category: "Ghost",
-    imageSrc: "/ghostboo.png"
+    imageSrc: "/gallery/ghostboo1.png"
   },
   {
     id: 9,
