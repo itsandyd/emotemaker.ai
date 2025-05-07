@@ -14,26 +14,26 @@ export interface Testimonial {
 export const testimonials: Testimonial[] = [
   {
     id: 1,
-    name: "Samira",
-    title: "Video Game Streamer",
-    avatar: "https://cdn.pixabay.com/photo/2023/06/11/21/28/woman-8057032_1280.jpg",
-    content: "EmoteMaker.ai is a game-changer! I created custom emotes for my channel in minutes that perfectly match my brand and personality.",
+    name: "Scott Alderman",
+    title: "Owner of Bebop Community Discord ",
+    avatar: "/beboplogo.png",
+    content: "EmoteMaker.ai is a great tool that I use to create new emote ideas for my Discord server. I use it because I know I can count on the quality. It creates exactly what I ask for. It also keep improving with the times which is what I love about it, it keeps up with the current tech. I would highly recommend using EmoteMaker.ai to bring custom emojis and emotes to your virtual community!",
     rating: 5
   },
   {
     id: 2,
-    name: "MegaCommunity",
+    name: "Ducky",
     title: "Discord Community",
-    avatar: "https://cdn.pixabay.com/photo/2016/11/29/13/14/attractive-1869761_1280.jpg",
-    content: "This is phenomenal! Our entire Discord server now has custom-designed emotes that match our community vibe. The quality is outstanding.",
+    avatar: "/ducky.png",
+    content: "EmoteMaker.ai was a total lifesaver for our Discord! We now have unique emotes that represent our community perfectly.",
     rating: 4.5
   },
   {
     id: 3,
-    name: "Carlos",
-    title: "Content Creator",
-    avatar: "https://cdn.pixabay.com/photo/2016/11/18/19/07/happy-1836445_1280.jpg",
-    content: "EmoteMaker.ai was a total lifesaver for my rebrand! Created professional-quality emotes in minutes that my community loves.",
+    name: "Notloc",
+    title: "Twitch Streamer",
+    avatar: "/notloc.png",
+    content: "EmoteMaker.ai is a game-changer! I created custom emotes that perfectly match my stream&apos;s vibe in minutes.",
     rating: 5
   },
   {
@@ -144,11 +144,11 @@ export function TestimonialsSection() {
             >
               <div className="flex items-start mb-4">
                 <div className="flex-shrink-0 mr-4">
-                  {/* <img
+                  <img
                     src={testimonial.avatar}
                     alt={`${testimonial.name} profile`}
                     className="w-10 h-10 rounded-full object-cover"
-                  /> */}
+                  />
                 </div>
                 <div>
                   <h4 className="font-semibold text-base">{testimonial.name}</h4>
