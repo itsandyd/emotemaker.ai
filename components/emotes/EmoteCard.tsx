@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
+import { RangeSlider } from "@/components/ui/range-slider";
 import toast from "react-hot-toast";
 
 interface EmoteCardProps {
@@ -232,7 +232,7 @@ export const EmoteCard = ({
                 <span>Start: {trimRange[0].toFixed(1)}s</span>
                 <span>End: {trimRange[1].toFixed(1)}s</span>
               </div>
-              <Slider 
+              <RangeSlider 
                 value={trimRange}
                 min={0}
                 max={videoDuration}

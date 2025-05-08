@@ -50,6 +50,49 @@ export async function POST(req: Request) {
           return new NextResponse("User id is required", { status: 400 });
         }
 
+        // Handle emote purchases
+        if (session.metadata.emoteForSaleId) {
+          try {
+            // Get the emote for sale
+            const emoteForSale = await db.emoteForSale.findUnique({
+              where: {
+                id: session.metadata.emoteForSaleId
+              },
+              include: {
+                emote: true
+              }
+            });
+
+            if (!emoteForSale) {
+              console.error("Emote for sale not found", session.metadata.emoteForSaleId);
+            } else {
+              // Create a purchase record
+              await db.purchase.create({
+                data: {
+                  userId: session.metadata.userId,
+                  emoteForSaleId: session.metadata.emoteForSaleId,
+                  paymentIntentId: session.payment_intent as string,
+                }
+              });
+
+              // Add the emote to the user's collection via UserEmote
+              await db.userEmote.create({
+                data: {
+                  userId: session.metadata.userId,
+                  emoteId: emoteForSale.emoteId,
+                }
+              });
+              
+              console.log(`Emote ${emoteForSale.emoteId} purchased by user ${session.metadata.userId}`);
+            }
+          } catch (error) {
+            console.error("Error processing emote purchase:", error);
+          }
+          
+          // Return successful response for emote purchases
+          return new NextResponse(null, { status: 200 });
+        }
+
         // Retrieve the line items from the session
         const lineItems = await stripe.checkout.sessions.listLineItems(session.id);
         if (!lineItems || !lineItems.data || lineItems.data.length === 0) {

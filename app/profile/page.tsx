@@ -9,6 +9,8 @@ import { redirect } from "next/navigation";
 import { GuidesForGamersCTA } from "./_components/GuidesForGamers";
 import { deleteProfile } from "@/actions/delete-profile";
 import { Button } from "@/components/ui/button";
+import { PurchasedEmotesCard } from "./_components/PurchasedEmotes";
+import { Emote, EmoteForSale } from "@prisma/client";
 
 const ProfilePage = async () => {
 
@@ -63,6 +65,27 @@ const ProfilePage = async () => {
       }
     });
 
+    // Fetch purchased emotes
+    const purchasedEmotes = await db.emote.findMany({
+      where: {
+        users: {
+          some: {
+            userId: userId!,
+          }
+        },
+        // Exclude emotes that user created themselves
+        NOT: {
+          userId: userId!,
+        }
+      },
+      include: {
+        emoteForSale: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      }
+    });
+
     const handleDeleteProfile = async () => {
       'use server'
       await deleteProfile();
@@ -93,6 +116,15 @@ const ProfilePage = async () => {
               isPremiumUser={isPremiumUser}
             />
           </div>
+          {purchasedEmotes.length > 0 && (
+            <div className="py-4">
+              <PurchasedEmotesCard
+                purchasedEmotes={purchasedEmotes as (Emote & { emoteForSale: EmoteForSale | null })[]}
+                userId={userId!}
+                isPremiumUser={isPremiumUser}
+              />
+            </div>
+          )}
           <div className="py-4">
           <GuidesForGamersCTA />
           </div>

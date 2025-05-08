@@ -226,7 +226,15 @@ export default function Marketplace({
                       View Emote
                     </Button>
                   </Link>
-                  {/* <Button onClick={() => handlePurchase(emoteForSale.id)}>Purchase</Button> */}
+                  <Button 
+                    onClick={(e) => {
+                      e.preventDefault(); 
+                      handlePurchase(emoteForSale.id);
+                    }}
+                    className="w-full mt-2"
+                  >
+                    Purchase
+                  </Button>
                 </CardFooter>
               </Card>
             ))}
