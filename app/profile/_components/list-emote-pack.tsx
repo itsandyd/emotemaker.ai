@@ -23,6 +23,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { ChevronLeft, ChevronRight, Check, X, ArrowRight, Plus, Image as ImageIcon, Loader2 } from "lucide-react"
 import { Hint } from "@/components/hint"
 import { Badge } from "@/components/ui/badge"
+import { getEmotesForSale } from "@/actions/get-emotes-for-sale"
 
 interface ListEmotePackProps {
   emotePacks: any[];    
@@ -113,8 +114,12 @@ export default function ListEmotePack({ emotePacks, totalPages, currentPage }: L
 
   const loadAllEmotes = async () => {
     try {
-      const response = await axios.get('/api/emotes/for-sale');
-      setAllEmotesForSale(response.data.emotesForSale);
+      // Use the server action instead of direct API call
+      const { emotesForSale } = await getEmotesForSale({ 
+        itemsPerPage: 100 // Get more items than the default
+      });
+      
+      setAllEmotesForSale(emotesForSale);
     } catch (error) {
       console.error('Failed to load emotes for sale:', error);
       toast.error('Failed to load your emotes.');
