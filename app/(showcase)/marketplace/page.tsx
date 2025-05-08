@@ -4,7 +4,15 @@ import Marketplace from "./_components/marketplace";
 import { redirect } from "next/navigation";
 import { getEmotesForSale } from "@/actions/get-emotes-for-sale";
 
-const MarketplacePage = async ({ searchParams }: { searchParams: { page?: string, search?: string } }) => {
+const MarketplacePage = async ({ 
+  searchParams 
+}: { 
+  searchParams: { 
+    page?: string, 
+    search?: string,
+    style?: string 
+  } 
+}) => {
   const { userId } = auth();
   
   if (!userId) {
@@ -13,12 +21,14 @@ const MarketplacePage = async ({ searchParams }: { searchParams: { page?: string
 
   const page = parseInt(searchParams.page || '1', 10);
   const search = searchParams.search || '';
+  const style = searchParams.style || '';
   const ITEMS_PER_PAGE = 20;
 
   const { emotesForSale, totalCount } = await getEmotesForSale({
     page,
     itemsPerPage: ITEMS_PER_PAGE,
-    search
+    search,
+    style
   });
 
   const userEmotes = await db.emote.findMany({

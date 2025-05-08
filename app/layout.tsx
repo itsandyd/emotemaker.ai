@@ -10,6 +10,7 @@ import { ToasterProvider } from '@/components/ToasterProvider'
 import { checkSubscription } from '../lib/subscription'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import Script from 'next/script'
+import { Toaster } from "@/components/ui/sonner"
 
 import { getUser } from '@/actions/get-user'
 import { getUserCredits } from '@/actions/get-user-credits'
@@ -110,6 +111,7 @@ export default async function RootLayout({
         <body className={`${inter.className} h-full`}>
             <Navbar isPro={isPro} apiLimitCount={apiLimitCount} credits={credits} hasActiveSubscription={hasActiveSubscription} />
             <ToasterProvider />
+            <Toaster />
             <TooltipProvider>
               <ModalProvider />
               {children}

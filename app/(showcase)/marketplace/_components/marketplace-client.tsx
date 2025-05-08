@@ -1,0 +1,108 @@
+"use client"
+
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { PlusIcon } from "lucide-react";
+import { EmoteForSale, Emote } from "@prisma/client";
+import { useToast } from "@/components/ui/use-toast";
+import axios from "axios";
+import Link from "next/link";
+import MainLayout from "@/components/layout/MainLayout";
+
+// Import our new components
+
+import EmoteFilter from "@/components/EmoteFilter";
+import EmoteSearchBar from "@/components/EmoteSearchBar";
+import EmotePagination from "@/components/EmotePagination";
+import EmoteGrid from "./EmoteGrid";
+
+interface MarketplaceClientProps {
+  initialEmotesForSale: (EmoteForSale & { emote: Emote })[];
+  userEmotes: (Emote & { emoteForSale: EmoteForSale | null })[];
+  userId: string;
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+}
+
+export default function MarketplaceClient({ 
+  initialEmotesForSale, 
+  userEmotes, 
+  userId, 
+  currentPage, 
+  totalPages, 
+  totalCount 
+}: MarketplaceClientProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [emotes, setEmotes] = useState(initialEmotesForSale);
+  const [loading, setLoading] = useState(false);
+  const [currentStyle, setCurrentStyle] = useState<string>(searchParams.get('style') || "");
+  const { toast } = useToast();
+
+  // Reset loading state when initialEmotesForSale changes
+  useEffect(() => {
+    setEmotes(initialEmotesForSale);
+    setLoading(false);
+  }, [initialEmotesForSale]);
+
+  // Prepare extra URL params for pagination links
+  const getExtraParams = () => {
+    const params = [];
+    const search = searchParams.get('search');
+    if (search) params.push(`search=${encodeURIComponent(search)}`);
+    if (currentStyle) params.push(`style=${encodeURIComponent(currentStyle)}`);
+    return params.length ? params.join('&') : '';
+  };
+
+  const handlePurchase = async (emoteId: string) => {
+    try {
+      const response = await axios.get(`/api/stripe/purchase-emote?emoteId=${emoteId}`);
+      const { url } = response.data;
+      window.location.href = url;
+    } catch (error) {
+      console.error('Error initiating purchase:', error);
+      toast({
+        title: "Error",
+        description: 'Failed to initiate purchase. Please try again.',
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex flex-col md:flex-row justify-between items-start mb-8">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-semibold mb-2">Emote Marketplace</h1>
+            <p className="text-muted-foreground">Browse and purchase unique emotes created by our community.</p>
+          </div>
+          <div className="flex flex-col sm:flex-row mt-4 md:mt-0 space-y-3 sm:space-y-0 sm:space-x-3">
+            <EmoteSearchBar initialValue={searchParams.get('search') || ""} />
+            <Link href="/profile/list">
+              <Button className="flex items-center">
+                <PlusIcon className="mr-2 h-4 w-4" /> Add Emote
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        <EmoteFilter onFilterChange={setCurrentStyle} />
+
+        <EmoteGrid 
+          emotes={emotes} 
+          loading={loading} 
+        />
+
+        {totalPages > 1 && (
+          <EmotePagination 
+            currentPage={currentPage} 
+            totalPages={totalPages} 
+            baseUrl="/marketplace" 
+            extraParams={getExtraParams()}
+          />
+        )}
+      </div>
+  );
+} 

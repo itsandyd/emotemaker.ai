@@ -6,11 +6,13 @@ import { Prisma, EmoteStatus } from "@prisma/client";
 export const getEmotesForSale = async ({
   page = 1,
   itemsPerPage = 20,
-  search = ''
+  search = '',
+  style = ''
 }: {
   page?: number;
   itemsPerPage?: number;
   search?: string;
+  style?: string;
 }) => {
   const skip = (page - 1) * itemsPerPage;
 
@@ -23,6 +25,9 @@ export const getEmotesForSale = async ({
         { prompt: { contains: search.toUpperCase() } },
       ],
     } : {}),
+    ...(style ? {
+      style: { contains: style }
+    } : {})
   };
 
   const [emotesForSale, totalCount] = await Promise.all([

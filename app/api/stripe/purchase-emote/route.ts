@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
+import Stripe from "stripe";
 
 export const dynamic = 'force-dynamic';
 
@@ -98,14 +99,13 @@ export async function GET(req: NextRequest) {
     
     // Check if seller has connected their Stripe account
     const sellerStripeAccount = emoteForSale.user?.profile?.stripeConnectAccountId;
-
-    // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
+    
+    let sessionOptions: Stripe.Checkout.SessionCreateParams = {
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/emote/${emoteForSale.emoteId}?purchased=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/emote/${emoteForSale.emoteId}?canceled=true`,
-      mode: "payment",
+      mode: "payment" as const,
       payment_method_types: ["card"],
-      billing_address_collection: "auto",
+      billing_address_collection: "auto" as const,
       line_items: emoteForSale.stripePriceId 
         ? [
             {
@@ -127,14 +127,6 @@ export async function GET(req: NextRequest) {
               quantity: 1,
             }
           ],
-      ...(sellerStripeAccount && {
-        payment_intent_data: {
-          application_fee_amount: applicationFee,
-          transfer_data: {
-            destination: sellerStripeAccount,
-          },
-        },
-      }),
       metadata: {
         userId,
         emoteForSaleId: emoteForSale.id,
@@ -142,7 +134,41 @@ export async function GET(req: NextRequest) {
         platformRevenue: platformRevenue.toString(),
         sellerRevenue: sellerRevenue.toString(),
       },
-    });
+    };
+
+    // Only add transfer data if we have a valid seller account
+    // We now handle this in a try/catch to ensure fallback functionality
+    let session;
+    try {
+      if (sellerStripeAccount) {
+        // Try to create session with Connect transfer data
+        session = await stripe.checkout.sessions.create({
+          ...sessionOptions,
+          payment_intent_data: {
+            application_fee_amount: applicationFee,
+            transfer_data: {
+              destination: sellerStripeAccount,
+            },
+          },
+        } as Stripe.Checkout.SessionCreateParams);
+      } else {
+        // If no seller account, create regular session
+        session = await stripe.checkout.sessions.create(sessionOptions);
+      }
+    } catch (error) {
+      console.log("[CONNECT_ACCOUNT_ERROR]", error);
+      
+      // If the Connect transfer fails, fall back to a regular session
+      // This happens when the seller's account doesn't have the required capabilities
+      session = await stripe.checkout.sessions.create(sessionOptions);
+      
+      // Log this for later manual processing if needed
+      console.log("[FALLBACK_TO_DIRECT_PAYMENT] Will need manual processing for seller payment", {
+        emoteId: emoteForSale.id,
+        sellerId: emoteForSale.userId,
+        amount: sellerRevenue
+      });
+    }
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
