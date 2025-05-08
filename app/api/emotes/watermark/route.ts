@@ -29,13 +29,14 @@ export async function POST(req: Request) {
     const watermarkResponse = await axios.get(watermarkUrl, { responseType: 'arraybuffer' });
     const watermarkBuffer = Buffer.from(watermarkResponse.data);
 
-    // Apply watermark
+    // Apply watermark - keeping PNG format for transparency
     const watermarkedBuffer = await sharp(imageBuffer)
       .resize(500, 500) // Resize to a standard size
       .composite([{
         input: watermarkBuffer,
         gravity: 'center',
       }])
+      .png({ compressionLevel: 9 }) // Use maximum PNG compression to reduce file size
       .toBuffer();
 
     return new NextResponse(watermarkedBuffer, {

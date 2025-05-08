@@ -41,7 +41,9 @@ export async function POST(req: Request) {
         });
 
         const BUCKET_NAME = "pprcanvas";
-        const imageId = uuidv4();
+        // Use a much shorter key for S3 to prevent URL length issues
+        const randomId = Math.random().toString(36).substring(2, 10); // 8-character alphanumeric
+        const imageId = `wmk_${randomId}`; // Even shorter prefix with underscore
 
         try {
             await s3
@@ -58,38 +60,55 @@ export async function POST(req: Request) {
             return new NextResponse("Failed to upload watermarked image to S3", { status: 500 });
         }
 
+        // Generate the shortest possible URL
         const watermarkedUrl = `https://${BUCKET_NAME}.s3.amazonaws.com/${imageId}`;
 
-        // Check if an EmoteForSale record already exists
-        const existingEmoteForSale = await db.emoteForSale.findUnique({
-            where: { emoteId },
-        });
-
-        let updatedEmote;
-
-        if (existingEmoteForSale) {
-            // If it exists, update the watermarkedUrl
-            updatedEmote = await db.emoteForSale.update({
+        try {
+            // Check if an EmoteForSale record already exists
+            const existingEmoteForSale = await db.emoteForSale.findUnique({
                 where: { emoteId },
-                data: { watermarkedUrl },
             });
-        } else {
-            // If it doesn't exist, create a new EmoteForSale record
-            updatedEmote = await db.emoteForSale.create({
-                data: {
-                    watermarkedUrl,
-                    imageUrl: originalEmote.imageUrl,
-                    prompt: originalEmote.prompt,
-                    emote: { connect: { id: emoteId } },
-                    price: 0, // Set a default price
-                    style: originalEmote.style ?? "",
-                    model: originalEmote.model ?? "",
-                    user: { connect: { id: userId } },
-                },
-            });
-        }
 
-        return NextResponse.json({ watermarkedUrl: updatedEmote.watermarkedUrl });
+            let updatedEmote;
+
+            if (existingEmoteForSale) {
+                // If it exists, update the watermarkedUrl
+                updatedEmote = await db.emoteForSale.update({
+                    where: { emoteId },
+                    data: { watermarkedUrl },
+                });
+            } else {
+                // If it doesn't exist, create a new EmoteForSale record
+                updatedEmote = await db.emoteForSale.create({
+                    data: {
+                        watermarkedUrl,
+                        imageUrl: originalEmote.imageUrl,
+                        prompt: originalEmote.prompt,
+                        emote: { connect: { id: emoteId } },
+                        price: 0, // Set a default price
+                        style: originalEmote.style ?? "",
+                        model: originalEmote.model ?? "",
+                        user: { connect: { id: userId } },
+                    },
+                });
+            }
+
+            return NextResponse.json({ watermarkedUrl: updatedEmote.watermarkedUrl });
+        } catch (dbError) {
+            console.error('[DB_ERROR]', dbError);
+            
+            // If database operation fails, try to delete the S3 object to clean up
+            try {
+                await s3.deleteObject({
+                    Bucket: BUCKET_NAME,
+                    Key: imageId,
+                }).promise();
+            } catch (deleteError) {
+                console.error('[S3_DELETE_ERROR]', deleteError);
+            }
+            
+            return new NextResponse("Database error when saving watermarked URL", { status: 500 });
+        }
     } catch (error: unknown) {
         console.error('[UPLOAD_WATERMARK_ERROR]', error);
         
