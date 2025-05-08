@@ -128,7 +128,7 @@ const ProfilePage = async () => {
           <div className="py-4">
           <GuidesForGamersCTA />
           </div>
-          <div className="py-4">
+        <div className="py-4">
             <form action={handleDeleteProfile}>
               <Button type="submit" variant="destructive">Delete Profile</Button>
             </form>
