@@ -460,7 +460,7 @@ export default function ListEmotePack({ emotePacks, totalPages, currentPage }: L
       // Process each emote in sequence
       for (const emoteId of emoteIdsToWatermark) {
         console.log(`Processing emote ID: ${emoteId}`);
-        const result = await watermarkEmote(emoteId);
+        const result = await watermarkEmoteForSale(emoteId);
         if (result) {
           success++;
           toast.loading(`Watermarked ${success}/${emoteIdsToWatermark.length} emotes...`, { id: toastId });
@@ -515,7 +515,7 @@ export default function ListEmotePack({ emotePacks, totalPages, currentPage }: L
     // Check if all selected emotes have watermarks
     const unwatermarkedEmotes = selectedEmotes.filter(id => !emoteWatermarkStatus[id]);
     if (unwatermarkedEmotes.length > 0) {
-      toast.error(`${unwatermarkedEmotes.length} emotes don't have watermarks. Please apply watermarks to all emotes first.`);
+      toast.error(`${unwatermarkedEmotes.length} emotes don&apos;t have watermarks. Please apply watermarks to all emotes first.`);
       return;
     }
     
@@ -612,7 +612,7 @@ export default function ListEmotePack({ emotePacks, totalPages, currentPage }: L
               </>
             ) : (
               <div className="text-center py-8">
-                <p className="text-gray-500">You don't have any emote packs yet.</p>
+                <p className="text-gray-500">You don&apos;t have any emote packs yet.</p>
                 <Button 
                   onClick={handleCreateNewClick}
                   className="mt-4"
@@ -702,7 +702,7 @@ export default function ListEmotePack({ emotePacks, totalPages, currentPage }: L
                     <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-700">
                       <p className="flex items-center">
                         <ArrowRight className="h-4 w-4 mr-2 flex-shrink-0" />
-                        After creating your pack, you'll be able to add emotes and set a price before publishing.
+                        After creating your pack, you&apos;ll be able to add emotes and set a price before publishing.
                       </p>
                     </div>
                   ) : selectedPack && (
@@ -740,9 +740,9 @@ export default function ListEmotePack({ emotePacks, totalPages, currentPage }: L
                 {!isCreatingNew && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 gap-2 mt-2 max-h-[300px] overflow-y-auto p-2 border rounded-md">
                     {allEmotesForSale.length > 0 ? (
-                      allEmotesForSale.map((emoteForSale) => {
-                        const emoteId = emoteForSale.id;
-                        const hasWatermark = !!emoteForSale.watermarkedUrl;
+                      allEmotesForSale.map((emote) => {
+                        const emoteId = emote.id;
+                        const hasWatermark = !!emote.watermarkedUrl;
                         const isSelected = selectedEmotes.includes(emoteId);
                         
                         return (
@@ -759,8 +759,8 @@ export default function ListEmotePack({ emotePacks, totalPages, currentPage }: L
                           >
                             <div className="aspect-square relative">
                               <Image
-                                src={emoteForSale.imageUrl}
-                                alt={emoteForSale.prompt || "Emote"}
+                                src={emote.imageUrl}
+                                alt={emote.prompt || "Emote"}
                                 fill
                                 className="object-cover"
                               />
@@ -787,7 +787,7 @@ export default function ListEmotePack({ emotePacks, totalPages, currentPage }: L
                               
                               {/* Truncated prompt overlay at bottom */}
                               <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1 text-white text-xs truncate">
-                                {emoteForSale.prompt ? emoteForSale.prompt.substring(0, 15) : "Emote"}
+                                {emote.prompt ? emote.prompt.substring(0, 15) : "Emote"}
                               </div>
                             </div>
                             
@@ -836,7 +836,7 @@ export default function ListEmotePack({ emotePacks, totalPages, currentPage }: L
                     ) : (
                       <div className="col-span-6 text-center py-4">
                         <p className="text-gray-500 text-sm">No emotes available for sale.</p>
-                        <p className="text-gray-500 text-xs mt-1">Create some emotes first and list them for sale.</p>
+                        <p className="text-gray-500 text-xs mt-1">Create and list some emotes first.</p>
                       </div>
                     )}
                   </div>
