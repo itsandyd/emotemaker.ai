@@ -24,6 +24,8 @@ import { ChevronLeft, ChevronRight, Check, X, ArrowRight, Plus, Image as ImageIc
 import { Hint } from "@/components/hint"
 import { Badge } from "@/components/ui/badge"
 import { getEmotesForSale } from "@/actions/get-emotes-for-sale"
+import { getUserEmotesForSale } from "@/actions/get-user-emotes-for-sale"
+import { useAuth } from "@clerk/nextjs"
 
 interface ListEmotePackProps {
   emotePacks: any[];    
@@ -34,6 +36,7 @@ interface ListEmotePackProps {
 export default function ListEmotePack({ emotePacks, totalPages, currentPage }: ListEmotePackProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { userId } = useAuth();
   const [selectedPack, setSelectedPack] = useState<any | null>(null);
   const [watermarkedUrl, setWatermarkedUrl] = useState('');
   const [price, setPrice] = useState('');
@@ -114,12 +117,23 @@ export default function ListEmotePack({ emotePacks, totalPages, currentPage }: L
 
   const loadAllEmotes = async () => {
     try {
-      // Use the server action instead of direct API call
-      const { emotesForSale } = await getEmotesForSale({ 
-        itemsPerPage: 100 // Get more items than the default
-      });
+      // Check if we have userId from Clerk
+      if (!userId) {
+        console.error('No user ID available');
+        toast.error('Cannot load your emotes: Not authenticated');
+        return;
+      }
       
-      setAllEmotesForSale(emotesForSale);
+      // Use API endpoint instead of server action to avoid Prisma browser issues
+      const response = await axios.get('/api/emotes/user-emotes-for-sale');
+      
+      if (response.data && response.data.emotesForSale) {
+        const { emotesForSale } = response.data;
+        console.log(`Loaded ${emotesForSale.length} emotes for sale`);
+        setAllEmotesForSale(emotesForSale);
+      } else {
+        throw new Error('Invalid response from API');
+      }
     } catch (error) {
       console.error('Failed to load emotes for sale:', error);
       toast.error('Failed to load your emotes.');
