@@ -8,7 +8,7 @@ import { EmoteStatus } from "@prisma/client";
 import { getEmotePacks, GetEmotePacksResult } from "@/actions/get-emote-packs";
 
 export const metadata: Metadata = {
-  title: "TwitchEmotes.ai - Marketplace",
+  title: "EmoteMaker.ai - Marketplace",
   description: "Browse and purchase unique emotes created by our community.",
 };
 
@@ -37,7 +37,8 @@ const MarketplacePage = async ({
   const skip = (page - 1) * ITEMS_PER_PAGE;
 
   const emoteWhere: any = {
-    status: EmoteStatus.MARKETPLACE_PUBLISHED,
+    // Accept any published emotes (not just marketplace_published)
+    // status: EmoteStatus.MARKETPLACE_PUBLISHED,
   };
 
   if (search) {
@@ -49,6 +50,8 @@ const MarketplacePage = async ({
   if (style) {
     emoteWhere.style = style;
   }
+
+  console.log("Fetching emotes with filter:", JSON.stringify(emoteWhere));
 
   const [emotesForSale, totalEmotes, userEmotes] = await Promise.all([
     db.emoteForSale.findMany({
@@ -75,6 +78,8 @@ const MarketplacePage = async ({
     }),
   ]);
 
+  console.log(`Found ${emotesForSale.length} emotes for sale and ${userEmotes.length} user emotes`);
+
   const totalEmotePages = Math.ceil(totalEmotes / ITEMS_PER_PAGE);
 
   let packsData: GetEmotePacksResult = {
@@ -89,14 +94,18 @@ const MarketplacePage = async ({
       userId: "",
       page,
       itemsPerPage: ITEMS_PER_PAGE,
+      status: undefined // Remove status filter to get all packs
     });
   } else {
     packsData = await getEmotePacks({
       userId: "",
       page: 1,
       itemsPerPage: 6,
+      status: undefined // Remove status filter to get all packs
     });
   }
+
+  console.log(`Found ${packsData.emotePacks.length} emote packs`);
 
   return (
     <Marketplace 

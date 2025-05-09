@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { EmotePackWithItems } from "@/actions/get-emote-packs";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { PlusIcon } from "lucide-react";
 
 interface EmotePacksGridProps {
   emotePacks: EmotePackWithItems[];
@@ -15,6 +16,8 @@ interface EmotePacksGridProps {
 }
 
 export default function EmotePacksGrid({ emotePacks, loading = false }: EmotePacksGridProps) {
+  console.log(`Rendering EmotePacksGrid with ${emotePacks?.length || 0} packs`);
+  
   if (loading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -25,11 +28,18 @@ export default function EmotePacksGrid({ emotePacks, loading = false }: EmotePac
     );
   }
 
-  if (!emotePacks.length) {
+  if (!emotePacks || emotePacks.length === 0) {
     return (
-      <div className="text-center py-12">
-        <h3 className="text-xl font-medium mb-2">No emote packs found</h3>
-        <p className="text-muted mb-4">There are no emote packs available at the moment.</p>
+      <div className="py-12 text-center">
+        <div className="bg-dark-lighter rounded-xl p-8 max-w-md mx-auto">
+          <h3 className="text-xl font-medium mb-2">No emote packs found</h3>
+          <p className="text-muted mb-6">There are currently no emote packs available in the marketplace.</p>
+          <Link href="/profile/list">
+            <Button className="flex items-center mx-auto">
+              <PlusIcon className="mr-2 h-4 w-4" /> Create Emote Pack
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }
