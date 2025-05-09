@@ -88,7 +88,7 @@ const EmoteGrid = ({ emotes, loading = false, onPurchase }: EmoteGridProps) => {
             key={emoteForSale.id} 
             emote={{
               id: emoteForSale.id,
-              imageUrl: emoteForSale.imageUrl,
+              imageUrl: emoteForSale.watermarkedUrl,
               prompt: emoteForSale.prompt,
               style: emoteForSale.style,
               model: emoteForSale.model,
