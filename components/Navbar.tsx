@@ -70,6 +70,9 @@ export const Navbar = ({
             <Button variant="ghost" className="hidden sm:block">
               <Link href="/emoteboard/editor/1">Emoteboard</Link>
             </Button>
+            <Button variant="ghost" className="hidden sm:block">
+              <Link href="/marketplace">Marketplace</Link>
+            </Button>
             <NavigationMenuList className="hidden sm:flex">
               {/* <NavigationMenuItem>
                 <NavigationMenuTrigger>

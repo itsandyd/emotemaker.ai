@@ -9,36 +9,48 @@ import { useToast } from "@/components/ui/use-toast";
 import axios from "axios";
 import Link from "next/link";
 import MainLayout from "@/components/layout/MainLayout";
+import { EmotePackWithItems } from "@/actions/get-emote-packs";
 
 // Import our new components
-
 import EmoteFilter from "@/components/EmoteFilter";
 import EmoteSearchBar from "@/components/EmoteSearchBar";
 import EmotePagination from "@/components/EmotePagination";
 import EmoteGrid from "./EmoteGrid";
+import EmotePacksGrid from "./EmotePacksGrid";
 
 interface MarketplaceClientProps {
   initialEmotesForSale: (EmoteForSale & { emote: Emote })[];
   userEmotes: (Emote & { emoteForSale: EmoteForSale | null })[];
+  emotePacks: EmotePackWithItems[];
   userId: string;
   currentPage: number;
   totalPages: number;
   totalCount: number;
+  packsCurrentPage: number;
+  packsTotalPages: number;
+  packsTotalCount: number;
 }
 
 export default function MarketplaceClient({ 
   initialEmotesForSale, 
   userEmotes, 
+  emotePacks = [],
   userId, 
   currentPage, 
   totalPages, 
-  totalCount 
+  totalCount,
+  packsCurrentPage,
+  packsTotalPages,
+  packsTotalCount
 }: MarketplaceClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [emotes, setEmotes] = useState(initialEmotesForSale);
   const [loading, setLoading] = useState(false);
   const [currentStyle, setCurrentStyle] = useState<string>(searchParams.get('style') || "");
+  const [viewMode, setViewMode] = useState<"emotes" | "packs">(
+    searchParams.get('view') === "packs" ? "packs" : "emotes"
+  );
   const { toast } = useToast();
 
   // Reset loading state when initialEmotesForSale changes
@@ -71,6 +83,24 @@ export default function MarketplaceClient({
     }
   };
 
+  // Toggle view mode and update URL
+  const toggleViewMode = (mode: "emotes" | "packs") => {
+    setViewMode(mode);
+    
+    // Update URL to preserve view mode during navigation
+    const newParams = new URLSearchParams(searchParams.toString());
+    if (mode === "packs") {
+      newParams.set("view", "packs");
+    } else {
+      newParams.delete("view");
+    }
+    
+    // Go to page 1 when switching view
+    newParams.set("page", "1");
+    
+    router.push(`/marketplace?${newParams.toString()}`);
+  };
+
   return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start mb-8">
@@ -88,20 +118,54 @@ export default function MarketplaceClient({
           </div>
         </div>
 
-        <EmoteFilter onFilterChange={setCurrentStyle} />
+        <div className="mb-6 flex justify-between items-center">
+          <EmoteFilter onFilterChange={setCurrentStyle} />
+          
+          <div className="flex gap-2">
+            <Button 
+              variant={viewMode === "emotes" ? "default" : "outline"} 
+              onClick={() => toggleViewMode("emotes")}
+            >
+              Individual Emotes
+            </Button>
+            <Button 
+              variant={viewMode === "packs" ? "default" : "outline"} 
+              onClick={() => toggleViewMode("packs")}
+            >
+              Emote Packs
+            </Button>
+          </div>
+        </div>
 
-        <EmoteGrid 
-          emotes={emotes} 
-          loading={loading} 
-        />
-
-        {totalPages > 1 && (
-          <EmotePagination 
-            currentPage={currentPage} 
-            totalPages={totalPages} 
-            baseUrl="/marketplace" 
-            extraParams={getExtraParams()}
-          />
+        {viewMode === "emotes" ? (
+          <>
+            <EmoteGrid 
+              emotes={emotes} 
+              loading={loading} 
+            />
+            
+            {totalPages > 1 && (
+              <EmotePagination 
+                currentPage={currentPage} 
+                totalPages={totalPages} 
+                baseUrl="/marketplace" 
+                extraParams={getExtraParams()}
+              />
+            )}
+          </>
+        ) : (
+          <>
+            <EmotePacksGrid emotePacks={emotePacks} />
+            
+            {packsTotalPages > 1 && (
+              <EmotePagination 
+                currentPage={packsCurrentPage} 
+                totalPages={packsTotalPages} 
+                baseUrl="/marketplace" 
+                extraParams={`view=packs&${getExtraParams()}`}
+              />
+            )}
+          </>
         )}
       </div>
   );

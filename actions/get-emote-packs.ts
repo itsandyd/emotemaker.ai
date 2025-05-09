@@ -1,25 +1,52 @@
 import { db } from "@/lib/db";
-import { Prisma, EmoteStatus } from "@prisma/client";
+import { Prisma, EmoteStatus, EmotePack, EmoteForSale, Emote } from "@prisma/client";
+
+export interface EmotePackWithItems extends EmotePack {
+  emotePackItems: {
+    emoteForSale: EmoteForSale & {
+      emote: Emote
+    }
+  }[];
+}
+
+export interface GetEmotePacksResult {
+  emotePacks: EmotePackWithItems[];
+  totalPages: number;
+  currentPage: number;
+  totalCount: number;
+}
 
 export const getEmotePacks = async ({
   userId,
   page = 1,
-  itemsPerPage = 9
+  itemsPerPage = 9,
+  status = EmoteStatus.PUBLISHED
 }: {
   userId: string;
   page?: number;
   itemsPerPage?: number;
-}) => {
+  status?: EmoteStatus;
+}): Promise<GetEmotePacksResult> => {
   try {
     const skip = (page - 1) * itemsPerPage;
+
+    // Build where clause
+    const where: Prisma.EmotePackWhereInput = {
+      status,
+    };
+    
+    // If userId is provided, filter by it (otherwise return all packs)
+    if (userId) {
+      where.userId = userId;
+    }
 
     // Use transaction to fetch count and packs in a single db operation
     const emotePacksWithCount = await db.$transaction([
       db.emotePack.count({
-        where: { userId },
+        where,
       }),
       db.emotePack.findMany({
-        where: { userId },
+        where,
         include: {
           emotePackItems: {
             include: {
@@ -43,7 +70,7 @@ export const getEmotePacks = async ({
     const totalPages = Math.ceil(totalCount / itemsPerPage);
 
     return {
-      emotePacks,
+      emotePacks: emotePacks as EmotePackWithItems[],
       totalPages,
       currentPage: page,
       totalCount,
