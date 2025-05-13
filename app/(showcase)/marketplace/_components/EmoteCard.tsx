@@ -5,6 +5,10 @@ import { useState } from "react";
 import { Emote } from "@prisma/client";
 import Link from "next/link";
 import Image from "next/image";
+import axios from "axios";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { addEmoteToLibrary } from "@/actions/addEmoteToLibrary";
 
 interface EmoteCardProps {
   emote: Emote & { name?: string; price?: number };
@@ -15,12 +19,60 @@ interface EmoteCardProps {
 
 const EmoteCard = ({ emote, isPack = false, showActions = true, onPurchase }: EmoteCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
-  const handlePurchase = (e: React.MouseEvent) => {
+  const handlePurchase = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
     if (onPurchase) {
       onPurchase(emote.id);
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      if (emote.price && emote.price > 0) {
+        // For paid emotes, use Stripe checkout
+        const emoteForSaleId = emote.id;
+        
+        const response = await axios.get(`/api/stripe/purchase-emote?emoteId=${emoteForSaleId}`);
+        window.location.href = response.data.url;
+      } else {
+        // For free emotes, use addEmoteToLibrary
+        const result = await addEmoteToLibrary({
+          prompt: emote.name || emote.prompt || "",
+          imageUrl: emote.imageUrl || "",
+          style: emote.style || "",
+          isVideo: false
+        });
+        
+        if (result.success) {
+          toast.success("Emote added to your library");
+          router.push("/profile"); // Redirect to profile after adding
+        } else {
+          throw new Error(result.error);
+        }
+      }
+    } catch (error) {
+      console.error("Purchase error:", error);
+      if (axios.isAxiosError(error)) {
+        // Check for the specific Stripe Connect capabilities error
+        const errorMessage = error.response?.data?.error || error.message;
+        if (errorMessage.includes("capabilities") || errorMessage.includes("Connect")) {
+          toast.error("We're having issues processing payments for this creator. Please try again later while we fix this!");
+        } else {
+          toast.error(`Failed to complete purchase: ${errorMessage}`);
+        }
+      } else if (error instanceof Error) {
+        toast.error(`Failed to complete purchase: ${error.message}`);
+      } else {
+        toast.error("An unknown error occurred");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -76,8 +128,9 @@ const EmoteCard = ({ emote, isPack = false, showActions = true, onPurchase }: Em
               size="sm"
               className="w-full bg-primary hover:bg-primary-dark text-xs py-1.5 rounded text-center transition"
               onClick={handlePurchase}
+              disabled={isLoading}
             >
-              Purchase
+              {isLoading ? "Processing..." : emote.price && emote.price > 0 ? "Purchase" : "Add to Library"}
             </Button>
           </div>
         )}

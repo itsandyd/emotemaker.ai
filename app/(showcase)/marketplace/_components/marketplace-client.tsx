@@ -75,11 +75,35 @@ export default function MarketplaceClient({
       window.location.href = url;
     } catch (error) {
       console.error('Error initiating purchase:', error);
-      toast({
-        title: "Error",
-        description: 'Failed to initiate purchase. Please try again.',
-        variant: "destructive",
-      });
+      if (axios.isAxiosError(error)) {
+        // Check for the specific Stripe Connect capabilities error
+        const errorMessage = error.response?.data?.error || error.message;
+        if (errorMessage.includes('capabilities') || errorMessage.includes('Connect')) {
+          toast({
+            title: "Payment Issue",
+            description: "We're having issues processing payments for this creator. Please try again later while we fix this!",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: `Failed to complete purchase: ${errorMessage}`,
+            variant: "destructive",
+          });
+        }
+      } else if (error instanceof Error) {
+        toast({
+          title: "Error",
+          description: `Failed to complete purchase: ${error.message}`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: 'An unknown error occurred',
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -142,6 +166,7 @@ export default function MarketplaceClient({
             <EmoteGrid 
               emotes={emotes} 
               loading={loading} 
+              onPurchase={handlePurchase}
             />
             
             {totalPages > 1 && (

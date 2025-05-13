@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
+import axios from "axios";
 
 interface EmoteGridProps {
   emotes: EmoteForSale[];
@@ -21,28 +22,23 @@ const EmoteGrid = ({ emotes, loading = false, onPurchase }: EmoteGridProps) => {
 
   const handlePurchase = async (emoteId: string) => {
     try {
-      const response = await fetch("/api/create-payment-intent", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ emoteId }),
-      });
-      
-      const data = await response.json();
-      
-      // Store purchase info in sessionStorage to retrieve after payment
-      sessionStorage.setItem('currentPurchase', JSON.stringify({
-        id: data.purchaseId,
-        clientSecret: data.clientSecret,
-        type: 'emote',
-        emoteId
-      }));
-      
-      // Navigate to checkout
-      router.push('/checkout');
+      const response = await axios.get(`/api/stripe/purchase-emote?emoteId=${emoteId}`);
+      window.location.href = response.data.url;
     } catch (error) {
-      toast.error("Failed to process purchase. Please try again.");
+      console.error('Purchase error:', error);
+      if (axios.isAxiosError(error)) {
+        // Check for the specific Stripe Connect capabilities error
+        const errorMessage = error.response?.data?.error || error.message;
+        if (errorMessage.includes('capabilities') || errorMessage.includes('Connect')) {
+          toast.error("We're having issues processing payments for this creator. Please try again later while we fix this!");
+        } else {
+          toast.error(`Failed to complete purchase: ${errorMessage}`);
+        }
+      } else if (error instanceof Error) {
+        toast.error(`Failed to complete purchase: ${error.message}`);
+      } else {
+        toast.error('An unknown error occurred');
+      }
     }
   };
 
