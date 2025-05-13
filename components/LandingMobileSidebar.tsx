@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Montserrat } from 'next/font/google'
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Paintbrush2, StoreIcon, LayoutDashboard } from "lucide-react";
+import { Paintbrush2, StoreIcon, LayoutDashboard, DollarSign } from "lucide-react";
 
 const poppins = Montserrat ({ weight: '600', subsets: ['latin'] });
 
@@ -14,6 +14,16 @@ const routes = [
     icon: LayoutDashboard,
     href: '/emoteboard/editor/1',
   },
+  {
+    label: 'Marketplace',
+    icon: StoreIcon,
+    href: '/marketplace',
+  },
+  // {
+  //   label: 'Pricing',
+  //   icon: DollarSign,
+  //   href: '/pricing',
+  // },
   // {
   //   label: 'Showcase',
   //   icon: StoreIcon,

@@ -18,7 +18,7 @@ export const mainFeatures: Feature[] = [
   {
     id: 1,
     title: "Multiple AI Models",
-    description: "Choose between Stable Diffusion X, PaLM and more for diverse creative styles and options.",
+    description: "Choose between Dall-E 3, Flux, Image-1, Imagen, and more for diverse creative styles and options.",
     icon: LayersIcon,
     iconBgClass: "bg-indigo-100"
   },

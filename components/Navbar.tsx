@@ -64,7 +64,7 @@ export const Navbar = ({
                 <Avatar className="mr-2">
                   <AvatarImage src="/peepopainter.jpg" />
                 </Avatar>
-                <span className="text-lg font-semibold">EmoteMaker.ai</span>
+                <span className="text-lg font-semibold hidden sm:block">EmoteMaker.ai</span>
               </Link>
             </Button>
             <Button variant="ghost" className="hidden sm:block">
@@ -73,6 +73,9 @@ export const Navbar = ({
             <Button variant="ghost" className="hidden sm:block">
               <Link href="/marketplace">Marketplace</Link>
             </Button>
+            {/* <Button variant="ghost" className="hidden sm:block">
+              <Link href="/pricing">Pricing</Link>
+            </Button> */}
             <NavigationMenuList className="hidden sm:flex">
               {/* <NavigationMenuItem>
                 <NavigationMenuTrigger>
@@ -115,6 +118,15 @@ export const Navbar = ({
           </NavigationMenu>
         </nav>
         <div className="flex items-center">
+          <SignedIn>
+            {hasActiveSubscription ? (
+              <CreditsDisplay credits={credits} hasActiveSubscription={true} />
+            ) : (
+              <Link href="/pricing">
+                <CreditsDisplay credits={0} hasActiveSubscription={false} />
+              </Link>
+            )}
+          </SignedIn>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="text-black">
@@ -169,7 +181,6 @@ export const Navbar = ({
             </DropdownMenuContent>
           </DropdownMenu>
           <SignedIn>
-            {hasActiveSubscription && <CreditsDisplay credits={credits} />}
             <div className="ml-4">
               <UserAccountNav isPro={isPro} />
             </div>

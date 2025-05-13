@@ -5,6 +5,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 import EmoteCard from "./EmoteCard";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { PlusIcon } from "lucide-react";
+import Link from "next/link";
 
 interface EmoteGridProps {
   emotes: EmoteForSale[];
@@ -14,6 +17,7 @@ interface EmoteGridProps {
 
 const EmoteGrid = ({ emotes, loading = false, onPurchase }: EmoteGridProps) => {
   const router = useRouter();
+  console.log(`Rendering EmoteGrid with ${emotes?.length || 0} emotes`);
 
   const handlePurchase = async (emoteId: string) => {
     try {
@@ -67,11 +71,18 @@ const EmoteGrid = ({ emotes, loading = false, onPurchase }: EmoteGridProps) => {
     );
   }
 
-  if (emotes.length === 0) {
+  if (!emotes || emotes.length === 0) {
     return (
-      <div className="text-center py-12">
-        <h3 className="text-xl font-medium mb-2">No emotes found</h3>
-        <p className="text-muted">Try adjusting your search or filters to find emotes.</p>
+      <div className="py-12 text-center">
+        <div className="bg-dark-lighter rounded-xl p-8 max-w-md mx-auto">
+          <h3 className="text-xl font-medium mb-2">No emotes found</h3>
+          <p className="text-muted mb-6">No emotes are currently available in the marketplace. Be the first to add one!</p>
+          <Link href="/profile/list">
+            <Button className="flex items-center mx-auto">
+              <PlusIcon className="mr-2 h-4 w-4" /> Create Emote
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -88,7 +99,7 @@ const EmoteGrid = ({ emotes, loading = false, onPurchase }: EmoteGridProps) => {
             key={emoteForSale.id} 
             emote={{
               id: emoteForSale.id,
-              imageUrl: emoteForSale.watermarkedUrl,
+              imageUrl: emoteForSale.watermarkedUrl || emoteForSale.imageUrl,
               prompt: emoteForSale.prompt,
               style: emoteForSale.style,
               model: emoteForSale.model,
