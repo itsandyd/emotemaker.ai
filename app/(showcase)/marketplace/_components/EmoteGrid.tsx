@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import axios from "axios";
+import { useUser } from "@clerk/nextjs";
 
 interface EmoteGridProps {
   emotes: EmoteForSale[];
@@ -18,6 +19,7 @@ interface EmoteGridProps {
 
 const EmoteGrid = ({ emotes, loading = false, onPurchase }: EmoteGridProps) => {
   const router = useRouter();
+  const user = useUser();
   console.log(`Rendering EmoteGrid with ${emotes?.length || 0} emotes`);
 
   const handlePurchase = async (emoteId: string) => {

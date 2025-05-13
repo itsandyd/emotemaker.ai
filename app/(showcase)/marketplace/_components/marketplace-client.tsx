@@ -10,6 +10,7 @@ import axios from "axios";
 import Link from "next/link";
 import MainLayout from "@/components/layout/MainLayout";
 import { EmotePackWithItems } from "@/actions/get-emote-packs";
+import { useUser } from "@clerk/nextjs";
 
 // Import our new components
 import EmoteFilter from "@/components/EmoteFilter";
@@ -52,6 +53,7 @@ export default function MarketplaceClient({
     searchParams.get('view') === "packs" ? "packs" : "emotes"
   );
   const { toast } = useToast();
+  const { user } = useUser();
 
   // Reset loading state when initialEmotesForSale changes
   useEffect(() => {

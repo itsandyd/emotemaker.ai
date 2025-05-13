@@ -9,6 +9,7 @@ import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { addEmoteToLibrary } from "@/actions/addEmoteToLibrary";
+import { useUser } from "@clerk/nextjs";
 
 interface EmoteCardProps {
   emote: Emote & { name?: string; price?: number };

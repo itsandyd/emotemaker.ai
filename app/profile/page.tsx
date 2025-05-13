@@ -17,7 +17,7 @@ const ProfilePage = async () => {
     const { userId } = auth();
 
     if (!userId) (
-      redirect('/signin')
+      redirect('/sign-in')
     )
 
     let user = await db.user.findUnique({

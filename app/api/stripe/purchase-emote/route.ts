@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 import Stripe from "stripe";
@@ -43,6 +43,10 @@ export async function GET(req: NextRequest) {
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
+
+    // Get current user for email
+    const user = await currentUser();
+    const userEmail = user?.emailAddresses[0]?.emailAddress;
 
     const url = new URL(req.url);
     const emoteId = url.searchParams.get("emoteId");
@@ -135,6 +139,11 @@ export async function GET(req: NextRequest) {
         sellerRevenue: sellerRevenue.toString(),
       },
     };
+
+    // Add customer email if available
+    if (userEmail) {
+      sessionOptions.customer_email = userEmail;
+    }
 
     // Only add transfer data if we have a valid seller account
     // We now handle this in a try/catch to ensure fallback functionality
