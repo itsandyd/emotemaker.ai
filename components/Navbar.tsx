@@ -21,7 +21,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Megaphone, HelpCircle, MessageSquare, Lightbulb, DollarSign } from "lucide-react";
+import { Megaphone, HelpCircle, MessageSquare, Lightbulb, DollarSign, Zap } from "lucide-react";
+import * as React from "react";
+import { cn } from "@/lib/utils";
 
 const emoteTypes = [
   { name: "Pixel Emotes", link: "/pixels" },
@@ -62,7 +64,7 @@ export const Navbar = ({
             <Button variant="link" className="flex items-center">
               <Link href="/" className="flex items-center">
                 <Avatar className="mr-2">
-                  <AvatarImage src="/peepopainter.jpg" />
+                  <AvatarImage src="/gallery/emoteross.svg" />
                 </Avatar>
                 <span className="text-lg font-semibold hidden sm:block">EmoteMaker.ai</span>
               </Link>
@@ -197,10 +199,6 @@ export const Navbar = ({
 };
 
 export default Navbar;
-
-import * as React from "react";
-import { cn } from "@/lib/utils"; // Ensure you have a utility function to handle classnames
-import { Star, Zap } from "lucide-react";
 
 const ListItem = React.forwardRef<
   React.ElementRef<"a">,
