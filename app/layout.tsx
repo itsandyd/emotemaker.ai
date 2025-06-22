@@ -11,12 +11,16 @@ import { checkSubscription } from '../lib/subscription'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import Script from 'next/script'
 import { Toaster } from "@/components/ui/sonner"
-
+import { Analytics } from "@vercel/analytics/react"
 import { getUser } from '@/actions/get-user'
 import { getUserCredits } from '@/actions/get-user-credits'
-import { Analytics } from "@vercel/analytics/react"
 
-const inter = Inter({ subsets: ['latin'] })
+// Optimize font loading
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  preload: true
+})
 
 export const metadata: Metadata = {
   title: 'EmoteMaker.ai - Create Custom Emotes for Twitch and Discord',
@@ -37,7 +41,7 @@ export const metadata: Metadata = {
     siteName: 'EmoteMaker.ai',
     images: [
       {
-        url: 'https://emotemaker.ai/og-image.png', // Replace with your actual OG image URL
+        url: 'https://emotemaker.ai/og-image.png',
         width: 1200,
         height: 630,
         alt: 'EmoteMaker.ai - Custom Emote Creator',
@@ -50,8 +54,8 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'EmoteMaker.ai - Create Custom Emotes with AI',
     description: 'Design unique emotes for Twitch and Discord using AI. Stand out with personalized, high-quality emotes.',
-    images: ['https://emotemaker.ai/twitter-image.png'], // Replace with your actual Twitter card image URL
-    creator: '@EmoteMakerAI', // Replace with your actual Twitter handle
+    images: ['https://emotemaker.ai/twitter-image.png'],
+    creator: '@EmoteMakerAI',
   },
   viewport: {
     width: 'device-width',
@@ -82,9 +86,14 @@ export default async function RootLayout({
   children: React.ReactNode
 }) {
   const { userId } = auth()
-  const apiLimitCount = await getApiLimitCount()
-  const isPro = await checkSubscription(userId)
-  const credits = await getUserCredits()
+  
+  // Parallel data fetching for better performance
+  const [apiLimitCount, isPro, credits, hasActiveSubscription] = await Promise.all([
+    getApiLimitCount(),
+    checkSubscription(userId),
+    getUserCredits(),
+    checkSubscription(userId)
+  ])
 
   let user = null;
   if (userId) {
@@ -100,13 +109,17 @@ export default async function RootLayout({
     }
   }
 
-  const hasActiveSubscription = await checkSubscription(userId);
-
   return (
     <ClerkProvider>
       <html lang="en" className="h-full">
         <head>
+          {/* Preload critical resources */}
+          <link rel="preload" href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css" as="style" />
           <link href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css" rel="stylesheet" />
+          
+          {/* DNS prefetch for external domains */}
+          <link rel="dns-prefetch" href="//cdn.trackdesk.com" />
+          <link rel="dns-prefetch" href="//r.wdfl.co" />
         </head>
         <body className={`${inter.className} h-full`}>
             <Navbar isPro={isPro} apiLimitCount={apiLimitCount} credits={credits} hasActiveSubscription={hasActiveSubscription} />
@@ -116,9 +129,15 @@ export default async function RootLayout({
               <ModalProvider />
               {children}
               <Analytics />
-              <Script async src="//cdn.trackdesk.com/tracking.js" />
+              
+              {/* Move tracking scripts to bottom for better performance */}
+              <Script 
+                src="//cdn.trackdesk.com/tracking.js" 
+                strategy="lazyOnload"
+              />
               <Script
                 id="trackdesk-script"
+                strategy="lazyOnload"
                 dangerouslySetInnerHTML={{
                   __html: `
                     (function(t,d,k){(t[k]=t[k]||[]).push(d);t[d]=t[d]||t[k].f||function(){(t[d].q=t[d].q||[]).push(arguments)}})(window,"trackdesk","TrackdeskObject");
@@ -126,10 +145,18 @@ export default async function RootLayout({
                   `,
                 }}
               />
-              <Script src="https://r.wdfl.co/rw.js" data-rewardful="80664d" />
-              <Script id="rewardful-queue">
-                {`(function(w,r){w._rwq=r;w[r]=w[r]||function(){(w[r].q=w[r].q||[]).push(arguments)}})(window,'rewardful');`}
-              </Script>
+              <Script 
+                src="https://r.wdfl.co/rw.js" 
+                data-rewardful="80664d"
+                strategy="lazyOnload"
+              />
+              <Script 
+                id="rewardful-queue"
+                strategy="lazyOnload"
+                dangerouslySetInnerHTML={{
+                  __html: `(function(w,r){w._rwq=r;w[r]=w[r]||function(){(w[r].q=w[r].q||[]).push(arguments)}})(window,'rewardful');`
+                }}
+              />
             </TooltipProvider>
         </body>
       </html>

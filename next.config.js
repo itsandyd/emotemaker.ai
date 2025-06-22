@@ -1,21 +1,54 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  
+  // Performance optimizations
+  swcMinify: true,
+  poweredByHeader: false,
+  compress: true,
+  
+  // Image optimization
   images: {
     domains: [
       "uploadthing.com",
-      "utfs.io",
+      "utfs.io", 
       "img.clerk.com",
-      "subdomain",
       "files.stripe.com",
       "oaidalleapiprodscus.blob.core.windows.net",
       "pprcanvas.s3.amazonaws.com",
-      "emotemaker-pldnvxto6-emotemaker.vercel.app",
       "emotemaker.ai",
     ],
-    unoptimized: true,
+    formats: ['image/webp', 'image/avif'],
+    minimumCacheTTL: 60,
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
-  webpack: (config, { isServer }) => {
+
+  // Headers for security and performance
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY'
+          },
+          {
+            key: 'X-Content-Type-Options', 
+            value: 'nosniff'
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin'
+          }
+        ]
+      }
+    ]
+  },
+
+  webpack: (config, { isServer, dev }) => {
+    // Canvas externals for server-side
     if (isServer) {
       config.externals.push({
         canvas: "commonjs canvas",
@@ -23,28 +56,45 @@ const nextConfig = {
       });
     }
 
-    // Add node-loader for .node files
+    // Production optimizations
+    if (!dev) {
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        cacheGroups: {
+          vendor: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            chunks: 'all',
+          },
+        },
+      };
+    }
+
+    // Node loader for .node files
     config.module.rules.push({
       test: /\.node$/,
       use: "node-loader",
     });
 
-    // Add canvas loader
-    config.module.rules.push({
-      test: /\.(node|canvas)$/,
-      use: {
-        loader: "node-loader",
-        options: {
-          name: "[name].[ext]",
-        },
-      },
-    });
-
     return config;
   },
+  
   experimental: {
     serverComponentsExternalPackages: ["canvas"],
+    optimizeCss: true,
+    optimizePackageImports: [
+      'lucide-react',
+      '@radix-ui/react-icons',
+      'date-fns'
+    ]
   },
+  
+  // Bundle analyzer in development
+  ...(process.env.ANALYZE === 'true' && {
+    bundleAnalyzer: {
+      enabled: true,
+    }
+  })
 };
 
 module.exports = nextConfig;
