@@ -56,6 +56,25 @@ const nextConfig = {
       });
     }
 
+    // Fix for browser-only packages in server-side rendering
+    if (isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+      };
+    }
+
+    // Define global variables for browser compatibility
+    const webpack = require('webpack');
+    config.plugins.push(
+      new webpack.DefinePlugin({
+        'typeof window': JSON.stringify('object'),
+        'typeof self': JSON.stringify('object'),
+      })
+    );
+
     // Production optimizations
     if (!dev) {
       config.optimization.splitChunks = {

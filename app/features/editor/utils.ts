@@ -1,5 +1,5 @@
 import { RGBColor } from "react-color"
-import { uuid } from "uuidv4"
+import { v4 as uuid } from "uuid"
 import Konva from 'konva'
 
 export function downloadFile(file: string, type: string) {
