@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Star, GamepadIcon, UsersIcon, VideoIcon } from "lucide-react";
+import Image from "next/image";
 
 export interface Testimonial {
   id: number;
@@ -144,9 +145,11 @@ export function TestimonialsSection() {
             >
               <div className="flex items-start mb-4">
                 <div className="flex-shrink-0 mr-4">
-                  <img
+                  <Image
                     src={testimonial.avatar}
                     alt={`${testimonial.name} profile`}
+                    width={40}
+                    height={40}
                     className="w-10 h-10 rounded-full object-cover"
                   />
                 </div>

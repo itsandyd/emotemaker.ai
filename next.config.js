@@ -63,6 +63,11 @@ const nextConfig = {
         fs: false,
         path: false,
         crypto: false,
+        stream: false,
+        util: false,
+        buffer: false,
+        events: false,
+        'ua-parser-js': false, // Fix for ua-parser-js middleware issue
       };
     }
 
@@ -70,8 +75,10 @@ const nextConfig = {
     const webpack = require('webpack');
     config.plugins.push(
       new webpack.DefinePlugin({
-        'typeof window': JSON.stringify('object'),
-        'typeof self': JSON.stringify('object'),
+        'typeof window': isServer ? JSON.stringify('undefined') : JSON.stringify('object'),
+        'typeof self': isServer ? JSON.stringify('undefined') : JSON.stringify('object'),
+        'typeof navigator': isServer ? JSON.stringify('undefined') : JSON.stringify('object'),
+        'typeof document': isServer ? JSON.stringify('undefined') : JSON.stringify('object'),
       })
     );
 
@@ -100,7 +107,8 @@ const nextConfig = {
   
   experimental: {
     serverComponentsExternalPackages: ["canvas"],
-    optimizeCss: true,
+    // Temporarily disable CSS optimization to fix critters issue
+    // optimizeCss: true,
     optimizePackageImports: [
       'lucide-react',
       '@radix-ui/react-icons',
