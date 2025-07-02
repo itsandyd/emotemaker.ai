@@ -6,8 +6,11 @@ import { auth } from "@clerk/nextjs/server";
 
 const DAY_IN_MS = 86_400_000;
 
-export const checkSubscription = async () => {
-  const { userId } = auth();
+export const checkSubscription = async (userId?: string | null) => {
+  if (!userId) {
+    const { userId: authUserId } = auth();
+    userId = authUserId;
+  }
 
   if (!userId) {
     return false;

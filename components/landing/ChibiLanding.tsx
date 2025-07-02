@@ -60,17 +60,28 @@ export default function ChibiLanding() {
               </div>
             </div>
             <div className="relative">
-              <Image
-                alt="AI-Generated Emotes Collage"
-                className="rounded-xl shadow-2xl"
-                height={600}
-                src="/emoteboard1.png"
-                style={{
-                  aspectRatio: "800/600",
-                  objectFit: "cover",
-                }}
-                width={800}
-              />
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.8 }}
+                className="relative rounded-2xl overflow-hidden shadow-2xl"
+              >
+                <Image
+                  alt="Cool Chibi with Sunglasses"
+                  className="rounded-2xl"
+                  height={800}
+                  src="/andrewchibi.jpeg"
+                  style={{
+                    objectFit: "contain",
+                    width: "100%",
+                    height: "auto",
+                    background: "white",
+                    padding: "1rem",
+                  }}
+                  width={800}
+                  priority
+                />
+              </motion.div>
               <div className="absolute -bottom-4 -right-4 bg-white p-4 rounded-lg shadow-lg">
                 <p className="font-bold text-[#FF69B4]">500+ Chibi Emotes Created!</p>
               </div>

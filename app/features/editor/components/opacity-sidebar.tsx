@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils"
-import { ActiveTool, Editor, STROKE_DASH_ARRAY, STROKE_WIDTH } from "../types"
+import { ActiveTool, KonvaEditor, DEFAULT_EDITOR_STATE } from "../types"
 import { ToolSidebarHeader } from "./tool-sidebar-header"
 import { ToolSidebarClose } from "./tool-sidebar-close"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -11,30 +11,26 @@ import { useEffect, useMemo, useState } from "react"
 interface OpacitySidebarProps {
     activeTool: ActiveTool;
     onChangeActiveTool: (tool: ActiveTool) => void;
-    editor: Editor | undefined;
+    editor: KonvaEditor | undefined;
 }
 
 export const OpacitySidebar = ({ activeTool, onChangeActiveTool, editor }: OpacitySidebarProps) => {
-
-    const initialValue = editor?.getActiveOpacity() || 1
-
-    const selectedObject = useMemo(() => editor?.selectedObjects[0], [editor?.selectedObjects])
-
-    const [opacity, setOpacity] = useState(initialValue)
+    const initialValue = editor?.selectedNode?.attrs?.opacity || DEFAULT_EDITOR_STATE.opacity;
+    const [opacity, setOpacity] = useState(initialValue);
 
     useEffect(() => {
-        if (selectedObject) {
-            setOpacity(selectedObject.get("opacity") || 1)
+        if (editor?.selectedNode) {
+            setOpacity(editor.selectedNode.attrs.opacity || DEFAULT_EDITOR_STATE.opacity);
         }
-    }, [selectedObject])
+    }, [editor?.selectedNode]);
 
     const onClose = () => {
-        onChangeActiveTool("select")
+        onChangeActiveTool("select");
     }
 
     const onChange = (value: number) => {
-        editor?.changeOpacity(value)
-        setOpacity(value)
+        editor?.setOpacity(value);
+        setOpacity(value);
     }
 
     return (

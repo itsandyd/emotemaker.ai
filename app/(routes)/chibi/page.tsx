@@ -15,10 +15,10 @@ export const metadata: Metadata = {
     siteName: 'EmoteMaker.ai',
     images: [
       {
-        url: 'https://emotemaker.ai/og-image-chibi.png', // Replace with your actual OG image URL
-        width: 1200,
-        height: 630,
-        alt: 'Chibi Emotes by EmoteMaker.ai',
+        url: '/andrewchibi.jpeg',
+        width: 800,
+        height: 800,
+        alt: 'Cool Chibi with Sunglasses by EmoteMaker.ai',
       },
     ],
     locale: 'en_US',
@@ -28,8 +28,8 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Chibi Emotes - EmoteMaker.ai',
     description: 'Create adorable Chibi emotes with AI for your Twitch and Discord communities.',
-    creator: '@EmoteMakerAI', // Replace with your actual Twitter handle
-    images: ['https://emotemaker.ai/twitter-image-chibi.png'], // Replace with your actual Twitter image URL
+    creator: '@EmoteMakerAI',
+    images: ['/andrewchibi.jpeg'],
   },
   viewport: {
     width: 'device-width',

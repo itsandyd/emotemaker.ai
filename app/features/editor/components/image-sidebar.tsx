@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 
 import { Slider } from "@/components/ui/slider"
 import { Button } from "@/components/ui/button"
-import { useGetImages } from "../../images/api/use-get-images"
+// import { useGetImages } from "../../images/api/use-get-images"
 import { AlertTriangle, Loader } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -21,7 +21,7 @@ interface ImageSidebarProps {
 }
 
 export const ImageSidebar = ({ activeTool, onChangeActiveTool, editor }: ImageSidebarProps) => {
-    const { data, isLoading, isError } = useGetImages()
+    // const { data, isLoading, isError } = useGetImages()
 
     const onClose = () => {
         onChangeActiveTool("select")
@@ -30,7 +30,7 @@ export const ImageSidebar = ({ activeTool, onChangeActiveTool, editor }: ImageSi
     return (
         <aside className={cn("bg-white relative border-r z-[40] w-[300px] h-full flex flex-col", activeTool === "images" ? "visible" : "hidden")}>
             <ToolSidebarHeader title="Images" description="Add images to your canvas" />
-            {isLoading && (
+            {/* {isLoading && (
                 <div className="flex items-center justify-center flex-1">
                     <Loader className="size-4 text-muted-foreground animate-spin" />
                 </div>
@@ -40,7 +40,7 @@ export const ImageSidebar = ({ activeTool, onChangeActiveTool, editor }: ImageSi
                     <AlertTriangle className="size-4 text-muted-foreground" />
                     <p className="text-muted-foreground text-xs">Failed to fetch images</p>
                 </div>
-            )}
+            )} */}
             <div className="p-4 border-b border-muted">
                 <FileUpload 
                     endpoint="imageUploader" 
@@ -50,18 +50,17 @@ export const ImageSidebar = ({ activeTool, onChangeActiveTool, editor }: ImageSi
             <ScrollArea>
                 <div className="p-4">
                     <div className="grid grid-cols-2 gap-4">
-                    {data && data.images.map((image) => {
+                    {/* {data && data.images.map((image) => {
                         return (
                             <button 
                                 key={image.id} 
                                 className="relative w-full h-[100px] group hover:opacity-75 transition bg-muted rounded-sm overflw-hidden border"
                                 onClick={() => editor?.addImage(image.urls.regular)}
                             >
-                                <Image 
-                                    fill
+                                <img 
                                     src={image.urls.small} 
                                     alt={image.alt_description || ""} 
-                                    className="object-cover"
+                                    className="object-cover w-full h-full"
                                 />
                                 <Link 
                                     href={image.links.html}
@@ -72,7 +71,7 @@ export const ImageSidebar = ({ activeTool, onChangeActiveTool, editor }: ImageSi
                                 </Link>
                             </button>
                         )
-                    })}
+                    })} */}
                     </div>
                 </div>
             </ScrollArea>

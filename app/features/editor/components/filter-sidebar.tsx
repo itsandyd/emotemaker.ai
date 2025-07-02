@@ -1,21 +1,17 @@
 import { cn } from "@/lib/utils"
-import { ActiveTool, Editor, filters, fonts, STROKE_DASH_ARRAY, STROKE_WIDTH } from "../types"
+import { ActiveTool, KonvaEditor, FilterType, filters } from "../types"
 import { ToolSidebarHeader } from "./tool-sidebar-header"
 import { ToolSidebarClose } from "./tool-sidebar-close"
 import { ScrollArea } from "@/components/ui/scroll-area"
-
-import { Slider } from "@/components/ui/slider"
 import { Button } from "@/components/ui/button"
-
 
 interface FilterSidebarProps {
     activeTool: ActiveTool;
     onChangeActiveTool: (tool: ActiveTool) => void;
-    editor: Editor | undefined;
+    editor: KonvaEditor | undefined;
 }
 
 export const FilterSidebar = ({ activeTool, onChangeActiveTool, editor }: FilterSidebarProps) => {
-
     const onClose = () => {
         onChangeActiveTool("select")
     }

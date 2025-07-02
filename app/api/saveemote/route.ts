@@ -4,7 +4,7 @@ import AWS from "aws-sdk";
 import { env } from "@/env.mjs";
 import { v4 as uuidv4 } from "uuid"
 import axios from "axios";
-import { auth } from "@clerk/nextjs/server"; // Import the auth function from Clerk
+import { auth } from "@clerk/nextjs/server";
 
 export const maxDuration = 300;
 
@@ -13,7 +13,6 @@ const prisma = new PrismaClient();
 export async function POST(req: Request) {
   console.log('[SAVE_EMOTE] Starting emote save process');
   
-  // Get the userId from the auth context
   const { userId } = auth();
   
   if (!userId) {
@@ -21,14 +20,14 @@ export async function POST(req: Request) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const { prompt, imageUrl, style, model } = await req.json();
-  console.log('[SAVE_EMOTE] Received data:', { userId, prompt, style, model });
+  const { prompt, imageUrl, style, model, isVideo } = await req.json();
+  console.log('[SAVE_EMOTE] Received data:', { userId, prompt, style, model, isVideo });
 
   try {
-    console.log('[SAVE_EMOTE] Fetching image from URL');
+    console.log('[SAVE_EMOTE] Fetching file from URL');
     const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-    const imageBase64 = Buffer.from(response.data, 'binary').toString('base64');
-    console.log('[SAVE_EMOTE] Image fetched and converted to base64');
+    const fileBuffer = Buffer.from(response.data);
+    console.log('[SAVE_EMOTE] File fetched');
 
     const s3 = new AWS.S3({
       credentials: {
@@ -39,31 +38,34 @@ export async function POST(req: Request) {
     });
 
     const BUCKET_NAME = "pprcanvas";
-    const imageId = uuidv4();
+    const fileId = uuidv4();
+    const fileExtension = isVideo ? '.mp4' : '.gif';
+    const contentType = isVideo ? 'video/mp4' : 'image/gif';
+    const key = `${isVideo ? 'videos' : 'emotes'}/${fileId}${fileExtension}`;
 
-    console.log('[SAVE_EMOTE] Uploading image to S3');
+    console.log(`[SAVE_EMOTE] Uploading ${isVideo ? 'video' : 'image'} to S3`);
     await s3
       .putObject({
         Bucket: BUCKET_NAME,
-        Key: imageId,
-        Body: Buffer.from(imageBase64!, "base64"),
-        ContentEncoding: "base64",
-        ContentType: "image/gif",
+        Key: key,
+        Body: fileBuffer,
+        ContentType: contentType,
       })
       .promise();
-    console.log('[SAVE_EMOTE] Image uploaded successfully');
+    console.log('[SAVE_EMOTE] File uploaded successfully');
 
-    const s3ImageUrl = `https://${BUCKET_NAME}.s3.amazonaws.com/${imageId}`;
-    console.log('[SAVE_EMOTE] S3 Image URL:', s3ImageUrl);
+    const s3Url = `https://${BUCKET_NAME}.s3.amazonaws.com/${key}`;
+    console.log('[SAVE_EMOTE] S3 URL:', s3Url);
 
     console.log('[SAVE_EMOTE] Creating emote in database');
     const emote = await prisma.emote.create({
       data: {
         userId,
         prompt,
-        imageUrl: s3ImageUrl,
+        imageUrl: s3Url,
         style,
         model,
+        isVideo: isVideo || false,
         createdAt: new Date(),
       },
     });

@@ -9,6 +9,7 @@ interface EmoteData {
   prompt?: string;
   imageUrl: string;
   style: string;
+  isVideo?: boolean;
 }
 
 export async function addEmoteToLibrary(emoteData: EmoteData) {
@@ -24,6 +25,7 @@ export async function addEmoteToLibrary(emoteData: EmoteData) {
         style: emoteData.style,
         imageUrl: emoteData.imageUrl,
         userId: userId,
+        isVideo: emoteData.isVideo || false,
       },
     });
 

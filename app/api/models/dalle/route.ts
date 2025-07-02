@@ -21,16 +21,18 @@ export async function POST(req: Request) {
     const { userId } = auth();
     console.log('User ID:', userId);
 
+    if (!userId) {
+      console.error('Unauthorized: No user ID');
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+
+    const id = userId as string;
+
     const body = await req.json();
     console.log('Request Body:', body);
 
     const { prompt, amount = 1, resolution = "1024x1024", emoteType } = body;
     console.log('Parsed Body:', { prompt, amount, resolution, emoteType });
-
-    if (!userId) {
-      console.error('Unauthorized: No user ID');
-      return new NextResponse("Unauthorized", { status: 401 });
-    }
 
     if (!openai.apiKey) {
       console.error('OpenAI API Key not configured');
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
 
     if (userCredits && userCredits.credits > 0) {
       await db.user.update({
-        where: { id: userId },
+        where: { id },
         data: { credits: userCredits.credits - 1 },
       });
       console.log('Credits updated for user:', userId);
@@ -82,33 +84,60 @@ export async function POST(req: Request) {
 
     const response = await openai.images.generate({
       model: "dall-e-3",
-      prompt: finalPrompt, // Use the finalPrompt with emoteType
-      // size: "512x512", // Adjusted to a supported resolution
+      prompt: finalPrompt,
       quality: "standard",
     });
 
-    // const images = response.data; // Assuming this is the array of generated images
+    if (!response.data || response.data.length === 0) {
+      console.error('No data in OpenAI response');
+      return new NextResponse("Failed to generate image", { status: 500 });
+    }
 
-    // Loop through each generated image and save it
-    // for (const image of images) {
-    //   const imageUrl = image.url; // Adjust according to your actual image URL structure
+    // Download the image from OpenAI URL
+    const imageUrl = response.data[0].url;
+    if (!imageUrl) {
+      throw new Error("No image URL in response");
+    }
+    
+    const imageResponse = await axios.get(imageUrl as string, { responseType: 'arraybuffer' });
+    const buffer = Buffer.from(imageResponse.data, 'binary');
 
-    //   // Convert image URL to S3 URL or keep as is if already using S3 URLs
-    //   const s3ImageUrl = imageUrl; // Placeholder for any conversion logic if necessary
+    // Configure AWS S3
+    const s3 = new AWS.S3({
+      credentials: {
+        accessKeyId: env.ACCESS_KEY_ID,
+        secretAccessKey: env.SECRET_ACCESS_KEY,
+      },
+      region: "us-east-1",
+    });
 
-    //   // Save each emote to the database
-    //   await db.emote.create({
-    //     data: {
-    //       userId: userId,
-    //       prompt: prompt,
-    //       imageUrl: s3ImageUrl,
-    //       // Add any other fields as necessary
-    //     },
-    //   });
-    // }
+    const BUCKET_NAME = "pprcanvas";
+    if (!BUCKET_NAME) {
+      throw new Error("AWS bucket name not configured");
+    }
 
-    // Return a success response or the saved emotes as needed
-    return NextResponse.json(response.data[0].url);
+    // Generate unique filename
+    const key = `emotes/${id}/${uuidv4()}.png`;
+
+    // Upload to S3
+    const uploadResult = await s3.upload({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      Body: buffer,
+      ContentType: 'image/png',
+    }).promise();
+
+    // Save to database
+    const emote = await db.emote.create({
+      data: {
+        userId: id,
+        prompt: prompt,
+        imageUrl: uploadResult.Location,
+      },
+    });
+
+    // Return array with S3 URL
+    return NextResponse.json([uploadResult.Location]);
   } catch (error) {
     console.error('[EMOTE_GENERATION_ERROR]', error);
     return new NextResponse("Internal Error", { status: 500 });

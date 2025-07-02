@@ -13,8 +13,15 @@ import Link from "next/link"
 import PricingHero from "./_components/Hero"
 import Image from "next/image"
 import { ChevronDownIcon } from "lucide-react"
+import { auth } from "@clerk/nextjs/server"
+import { redirect } from "next/navigation"
 
 export default function Component() {
+    const { userId } = auth();
+  
+    if (!userId) {
+      return redirect('/sign-in');
+    }
 
     const isPro = true 
   return (

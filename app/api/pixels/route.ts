@@ -78,9 +78,11 @@ export async function POST(
         prompt: finalPrompt,
         size: "1024x1024",
         quality: "standard",
-        // n: amount,
-        // size: resolution,
-      });
+    });
+
+    if (!response.data || response.data.length === 0) {
+        return new NextResponse("Failed to generate image", { status: 500 });
+    }
 
     console.log(response.data[0].url);
     

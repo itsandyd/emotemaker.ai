@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils"
-import { ActiveTool, Editor, STROKE_DASH_ARRAY, STROKE_WIDTH } from "../types"
+import { ActiveTool, KonvaEditor, DEFAULT_EDITOR_STATE } from "../types"
 import { ToolSidebarHeader } from "./tool-sidebar-header"
 import { ToolSidebarClose } from "./tool-sidebar-close"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -10,24 +10,27 @@ import { Button } from "@/components/ui/button"
 interface StrokeWidthSidebarProps {
     activeTool: ActiveTool;
     onChangeActiveTool: (tool: ActiveTool) => void;
-    editor: Editor | undefined;
+    editor: KonvaEditor | undefined;
 }
 
 export const StrokeWidthSidebar = ({ activeTool, onChangeActiveTool, editor }: StrokeWidthSidebarProps) => {
-
-    const widthValue = editor?.getActiveStrokeWidth() || STROKE_WIDTH;
-    const typeValue = editor?.getActiveStrokeDashArray() || STROKE_DASH_ARRAY;
+    const widthValue = editor?.selectedNode?.attrs?.strokeWidth || DEFAULT_EDITOR_STATE.strokeWidth;
+    const typeValue = editor?.selectedNode?.attrs?.dashEnabled ? editor?.selectedNode?.attrs?.dash : [];
 
     const onClose = () => {
         onChangeActiveTool("select")
     }
 
     const onChangeStrokeWidth = (value: number) => {
-        editor?.changeStrokeWidth(value)
+        editor?.setStrokeWidth(value)
     }
 
     const onChangeStrokeType = (value: number[]) => {
-        editor?.changeStrokeDashArray(value)
+        if (editor?.selectedNode) {
+            editor.selectedNode.setAttr('dash', value);
+            editor.selectedNode.setAttr('dashEnabled', value.length > 0);
+            editor.layers.get('main')?.batchDraw();
+        }
     }
 
     return (
@@ -45,7 +48,8 @@ export const StrokeWidthSidebar = ({ activeTool, onChangeActiveTool, editor }: S
                         variant="secondary"
                         size="lg"
                         className={cn(
-                            "w-full border-black rounded-full", JSON.stringify(typeValue) === `[]` && "border-4"
+                            "w-full border-black rounded-full",
+                            (!typeValue || typeValue.length === 0) && "border-4"
                         )}
                         style={{ padding: "8px 16px" }}
                     >
@@ -53,9 +57,11 @@ export const StrokeWidthSidebar = ({ activeTool, onChangeActiveTool, editor }: S
                     </Button>
                     <Button
                         onClick={() => onChangeStrokeType([5, 5])}
-                        variant="secondary" size="lg"
+                        variant="secondary"
+                        size="lg"
                         className={cn(
-                            "w-full border-black rounded-full", JSON.stringify(typeValue) === `[5,5]` && "border-4 border-blue-500"
+                            "w-full border-black rounded-full",
+                            (typeValue && typeValue.length > 0) && "border-4 border-blue-500"
                         )}
                         style={{ padding: "8px 16px" }}
                     >

@@ -1,8 +1,4 @@
 {
-    "crons": [
-      {
-        "path": "/api/cron/discord-post",
-        "schedule": "*/30 * * * *"
-      }
-    ]
-  }
+  "buildCommand": "npm run vercel-build",
+  "framework": "nextjs"
+}

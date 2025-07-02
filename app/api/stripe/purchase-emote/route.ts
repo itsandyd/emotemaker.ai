@@ -1,7 +1,10 @@
-import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { stripe } from "@/lib/stripe";
+import { NextRequest, NextResponse } from "next/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
+import { stripe } from "@/lib/stripe";
+import Stripe from "stripe";
+
+export const dynamic = 'force-dynamic';
 
 const MINIMUM_PRICE = 100; // $1.00 in cents
 const CONNECT_FEE_PERCENTAGE = 0.0025; // 0.25% for Stripe Connect
@@ -33,77 +36,152 @@ function calculateFees(priceInCents: number): { applicationFee: number, platform
   return { applicationFee, platformRevenue, sellerRevenue };
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     const { userId } = auth();
-    const { searchParams } = new URL(req.url);
-    const emoteId = searchParams.get("emoteId");
-
+    
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
+
+    // Get current user for email
+    const user = await currentUser();
+    const userEmail = user?.emailAddresses[0]?.emailAddress;
+
+    const url = new URL(req.url);
+    const emoteId = url.searchParams.get("emoteId");
 
     if (!emoteId) {
       return new NextResponse("Emote ID is required", { status: 400 });
     }
 
+    // Find the emote for sale
     const emoteForSale = await db.emoteForSale.findUnique({
-      where: { id: emoteId },
-      include: { user: { include: { profile: true } } },
+      where: {
+        id: emoteId,
+      },
+      include: {
+        emote: true,
+        user: { 
+          include: { 
+            profile: true 
+          } 
+        },
+      },
     });
 
-    if (!emoteForSale || emoteForSale.price === null) {
-      return new NextResponse("Emote not found or price not set", { status: 404 });
+    if (!emoteForSale) {
+      return new NextResponse("Emote not found", { status: 404 });
     }
 
-    if (!emoteForSale.user?.profile?.stripeConnectAccountId) {
-      return new NextResponse("Seller has not connected their Stripe account", { status: 400 });
+    // Check if user already owns this emote
+    const existingUserEmote = await db.userEmote.findUnique({
+      where: {
+        userId_emoteId: {
+          userId,
+          emoteId: emoteForSale.emoteId
+        }
+      }
+    });
+
+    if (existingUserEmote) {
+      return new NextResponse("You already own this emote", { status: 400 });
     }
 
-    const priceInCents = Math.round(emoteForSale.price * 100);
+    // Ensure there's a price
+    if (!emoteForSale.stripePriceId && !emoteForSale.stripePriceAmount) {
+      return new NextResponse("Emote not available for purchase", { status: 400 });
+    }
+
+    const priceInCents = emoteForSale.stripePriceAmount || Math.round((emoteForSale.price || 5) * 100);
+    
     if (priceInCents < MINIMUM_PRICE) {
       return new NextResponse(`Emote price must be at least $${MINIMUM_PRICE / 100}`, { status: 400 });
     }
 
     const { applicationFee, platformRevenue, sellerRevenue } = calculateFees(priceInCents);
-
-    const stripeSession = await stripe.checkout.sessions.create({
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/emote/${emoteId}?success=true&payment_intent={PAYMENT_INTENT}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/emote/${emoteId}?canceled=true`,
+    
+    // Check if seller has connected their Stripe account
+    const sellerStripeAccount = emoteForSale.user?.profile?.stripeConnectAccountId;
+    
+    let sessionOptions: Stripe.Checkout.SessionCreateParams = {
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/emote/${emoteForSale.emoteId}?purchased=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/emote/${emoteForSale.emoteId}?canceled=true`,
+      mode: "payment" as const,
       payment_method_types: ["card"],
-      mode: "payment",
-      billing_address_collection: "auto",
-      line_items: [
-        {
-          price_data: {
-            currency: "USD",
-            product_data: {
-              name: emoteForSale.prompt,
-              images: [emoteForSale.watermarkedUrl || emoteForSale.imageUrl],
-            },
-            unit_amount: priceInCents,
-          },
-          quantity: 1,
-        },
-      ],
-      payment_intent_data: {
-        application_fee_amount: applicationFee,
-        transfer_data: {
-          destination: emoteForSale.user.profile.stripeConnectAccountId,
-        },
-      },
+      billing_address_collection: "auto" as const,
+      line_items: emoteForSale.stripePriceId 
+        ? [
+            {
+              price: emoteForSale.stripePriceId,
+              quantity: 1,
+            }
+          ]
+        : [
+            {
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: emoteForSale.prompt || "Custom Emote",
+                  description: `${emoteForSale.style || ""} style emote`,
+                  images: [emoteForSale.watermarkedUrl || emoteForSale.imageUrl],
+                },
+                unit_amount: priceInCents,
+              },
+              quantity: 1,
+            }
+          ],
       metadata: {
         userId,
-        emoteId: emoteForSale.id,
-        sellerId: emoteForSale.userId,
+        emoteForSaleId: emoteForSale.id,
+        sellerId: emoteForSale.userId || "",
         platformRevenue: platformRevenue.toString(),
         sellerRevenue: sellerRevenue.toString(),
       },
-    });
+    };
 
-    return new NextResponse(JSON.stringify({ url: stripeSession.url }));
+    // Add customer email if available
+    if (userEmail) {
+      sessionOptions.customer_email = userEmail;
+    }
+
+    // Only add transfer data if we have a valid seller account
+    // We now handle this in a try/catch to ensure fallback functionality
+    let session;
+    try {
+      if (sellerStripeAccount) {
+        // Try to create session with Connect transfer data
+        session = await stripe.checkout.sessions.create({
+          ...sessionOptions,
+          payment_intent_data: {
+            application_fee_amount: applicationFee,
+            transfer_data: {
+              destination: sellerStripeAccount,
+            },
+          },
+        } as Stripe.Checkout.SessionCreateParams);
+      } else {
+        // If no seller account, create regular session
+        session = await stripe.checkout.sessions.create(sessionOptions);
+      }
+    } catch (error) {
+      console.log("[CONNECT_ACCOUNT_ERROR]", error);
+      
+      // If the Connect transfer fails, fall back to a regular session
+      // This happens when the seller's account doesn't have the required capabilities
+      session = await stripe.checkout.sessions.create(sessionOptions);
+      
+      // Log this for later manual processing if needed
+      console.log("[FALLBACK_TO_DIRECT_PAYMENT] Will need manual processing for seller payment", {
+        emoteId: emoteForSale.id,
+        sellerId: emoteForSale.userId,
+        amount: sellerRevenue
+      });
+    }
+
+    return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.log("[STRIPE_PURCHASE_EMOTE_ERROR]", error);
+    console.error("[STRIPE_PURCHASE_ERROR]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 }

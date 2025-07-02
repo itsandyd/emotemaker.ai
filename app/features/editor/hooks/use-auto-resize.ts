@@ -1,87 +1,50 @@
-import { useCallback, useEffect, useState } from "react";
-import { fabric } from "fabric";
+"use client"
+
+import { useCallback, useEffect } from "react";
+import Konva from "konva";
 
 interface UseAutoResizeProps {
-    canvas: fabric.Canvas | null;
+    stage: Konva.Stage | null;
     container: HTMLDivElement | null;
 }
 
-export const useAutoResize = ({ canvas, container }: UseAutoResizeProps) => {
-
+export const useAutoResize = ({ stage, container }: UseAutoResizeProps) => {
     const autoZoom = useCallback(() => {
-        if (!canvas || !container) return;
+        if (!stage || !container) return;
 
-        const width = container.offsetWidth;
-        const height = container.offsetHeight;
-
-        canvas.setWidth(width);
-        canvas.setHeight(height);
-
-        const center = canvas.getCenter();
+        const containerWidth = container.offsetWidth;
+        const containerHeight = container.offsetHeight;
         
-        const zoomRatio = 0.85;
+        // Ensure container is square (1:1 aspect ratio)
+        const size = Math.min(containerWidth, containerHeight);
+        
+        // Use container size as stage size to maintain 1:1 ratio
+        const stageWidth = size;
+        const stageHeight = size;
 
-        const localWorkspace = canvas
-            .getObjects()
-            .find((object) => object.name === "clip")
+        // Set stage to fill the container exactly (no scaling needed for square container)
+        stage.width(stageWidth);
+        stage.height(stageHeight);
+        stage.scale({ x: 1, y: 1 }); // 1:1 scale since container is already the right size
 
-        // @ts-ignore
-        const scale = fabric.util.findScaleToFit(localWorkspace, {
-            width: width,
-            height: height,
+        // Center the stage in the container (should be 0,0 for square container)
+        stage.x(0);
+        stage.y(0);
+
+        // Make sure all layers are visible
+        stage.getLayers().forEach(layer => {
+            layer.visible(true);
+            layer.batchDraw();
         });
 
-        const zoom = zoomRatio * scale;
-
-        canvas.setViewportTransform(fabric.iMatrix.concat())
-        canvas.zoomToPoint(new fabric.Point(
-            center.left,
-            center.top
-        ), zoom);
-
-        if (!localWorkspace) return;
-
-        const workspaceCenter = localWorkspace.getCenterPoint();
-        const viewportTransform = canvas.viewportTransform;
-
-        if (
-            canvas.width === undefined ||
-            canvas.height === undefined || 
-            !viewportTransform
-        ) {
-            return;
-        }
-
-        viewportTransform[4] = canvas.width / 2 - workspaceCenter.x *
-        viewportTransform[0];
-
-        viewportTransform[5] = canvas.height / 2 - workspaceCenter.y *
-        viewportTransform[3];
-
-        canvas.setViewportTransform(viewportTransform);
-
-        localWorkspace.clone((cloned: fabric.Rect) => {
-            canvas.clipPath = cloned;
-            canvas.requestRenderAll();
-        })
-
-    }, [canvas, container]);
+    }, [stage, container]);
 
     useEffect(() => {
-        let resizeObserver: ResizeObserver | null = null;
-
-        if (canvas && container) { 
-            resizeObserver = new ResizeObserver(() => {
-                autoZoom();
-            });
+        if (stage && container) {
+            const resizeObserver = new ResizeObserver(autoZoom);
             resizeObserver.observe(container);
+            autoZoom(); // Initial resize
+            return () => resizeObserver.disconnect();
         }
-
-        return () => {
-            if (resizeObserver) {
-                resizeObserver.disconnect();
-            }
-        };
-
-    }, [canvas, container, autoZoom]);
+    }, [stage, container, autoZoom]);
 };

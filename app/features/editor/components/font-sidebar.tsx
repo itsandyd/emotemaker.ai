@@ -1,21 +1,37 @@
 import { cn } from "@/lib/utils"
-import { ActiveTool, Editor, fonts, STROKE_DASH_ARRAY, STROKE_WIDTH } from "../types"
+import { ActiveTool, KonvaEditor, DEFAULT_EDITOR_STATE } from "../types"
 import { ToolSidebarHeader } from "./tool-sidebar-header"
 import { ToolSidebarClose } from "./tool-sidebar-close"
 import { ScrollArea } from "@/components/ui/scroll-area"
-
 import { Slider } from "@/components/ui/slider"
 import { Button } from "@/components/ui/button"
 
+// Common web-safe fonts
+const fonts = [
+    'Arial',
+    'Helvetica',
+    'Times New Roman',
+    'Times',
+    'Courier New',
+    'Courier',
+    'Verdana',
+    'Georgia',
+    'Palatino',
+    'Garamond',
+    'Bookman',
+    'Comic Sans MS',
+    'Trebuchet MS',
+    'Impact'
+];
 
 interface FontSidebarProps {
     activeTool: ActiveTool;
     onChangeActiveTool: (tool: ActiveTool) => void;
-    editor: Editor | undefined;
+    editor: KonvaEditor | undefined;
 }
 
 export const FontSidebar = ({ activeTool, onChangeActiveTool, editor }: FontSidebarProps) => {
-    const value = editor?.getActiveFontFamily()
+    const value = editor?.selectedNode?.attrs?.fontFamily || DEFAULT_EDITOR_STATE.fontFamily;
 
     const onClose = () => {
         onChangeActiveTool("select")
@@ -30,17 +46,17 @@ export const FontSidebar = ({ activeTool, onChangeActiveTool, editor }: FontSide
                         <Button 
                             key={font} 
                             className={cn(
-                                "w-full h-16 justify-start text-left", value === font && "border-4 border-blue-500"
+                                "w-full h-16 justify-start text-left", 
+                                value === font && "border-4 border-blue-500"
                             )}
                             size="lg"
-                            // onClick={() => editor?.setFont(font)}
                             variant="secondary"
                             style={{
                                 fontFamily: font,
                                 fontSize: "16px",
                                 padding: "8px 16px",
                             }}
-                            onClick={() => editor?.changeFontFamily(font)}
+                            onClick={() => editor?.setFontFamily(font)}
                         >
                             {font}
                         </Button>

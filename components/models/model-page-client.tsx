@@ -6,7 +6,7 @@ import { Emote } from "@prisma/client"; // Import Emote type
 import { useState } from 'react'; // Import useState
 import axios from 'axios'; // Import axios
 import { useUser } from "@clerk/nextjs"; // Import useUser hook from Clerk
-import * as fal from "@fal-ai/serverless-client";
+import { fal } from "@fal-ai/client";
 import JSZip from 'jszip';
 
 // Add this type definition

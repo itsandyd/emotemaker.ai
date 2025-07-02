@@ -3,7 +3,7 @@ import { checkApiLimit, incrementApiLimit } from "@/lib/api-limit";
 import { db } from "@/lib/db";
 import { checkSubscription } from "@/lib/oldsubscription";
 import { auth } from "@clerk/nextjs/server";
-import * as fal from "@fal-ai/serverless-client";
+import { fal } from "@fal-ai/client";
 import { NextResponse } from "next/server";
 
 export const maxDuration = 300;
