@@ -1,153 +1,215 @@
-import { db } from "../lib/db";
+import { db } from "@/lib/db";
 import { cache } from 'react'
-import { Emote, EmoteForSale, Prisma } from '@prisma/client';
+import { Emote } from "@prisma/client";
 
-export type EmoteWithForSale = Emote & {
-  emoteForSale: EmoteForSale | null;
+// Base interface for emote fetching options
+interface EmoteFetchOptions {
+  limit?: number;
+  offset?: number;
+  includeMetadata?: boolean;
+  sortBy?: 'createdAt' | 'prompt';
+  sortOrder?: 'asc' | 'desc';
+  filterByType?: string;
+}
+
+// Enhanced error types for better error handling
+export class EmoteFetchError extends Error {
+  constructor(
+    message: string, 
+    public code: 'UNAUTHORIZED' | 'NOT_FOUND' | 'DATABASE_ERROR' | 'VALIDATION_ERROR',
+    public statusCode: number = 500
+  ) {
+    super(message);
+    this.name = 'EmoteFetchError';
+  }
+}
+
+// Define types based on actual schema
+type EmoteWithForSale = Emote & {
+  emoteForSale?: {
+    id: string;
+    price: number | null;
+    status: string;
+  } | null;
 };
 
-interface FetchUserEmotesOptions {
-  page?: number;
-  limit?: number;
-  includeForSale?: boolean;
-  type?: 'all' | 'images' | 'videos';
-  sortBy?: 'newest' | 'oldest' | 'prompt';
-}
-
-interface FetchUserEmotesResult {
-  emotes: EmoteWithForSale[];
-  total: number;
-  hasMore: boolean;
-  page: number;
-  limit: number;
-}
-
-// Basic fetch for backward compatibility
-export const fetchUserEmotes = cache(async (userId: string): Promise<EmoteWithForSale[]> => {
+// Basic backward-compatible function
+export async function fetchUserEmotes(userId: string): Promise<Emote[]> {
   try {
+    if (!userId) {
+      throw new EmoteFetchError('User ID is required', 'VALIDATION_ERROR', 400);
+    }
+
     const emotes = await db.emote.findMany({
       where: {
         userId: userId,
       },
-      include: {
-        emoteForSale: true,
-      },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc'
       },
+      include: {
+        emoteForSale: {
+          select: {
+            id: true,
+            price: true,
+            status: true,
+          }
+        }
+      }
     });
-    
+
     return emotes;
   } catch (error) {
     console.error('Error fetching user emotes:', error);
-    throw new Error('Failed to fetch user emotes');
-  }
-});
-
-// Enhanced fetch with pagination and filtering
-export const fetchUserEmotesWithOptions = cache(async (
-  userId: string, 
-  options: FetchUserEmotesOptions = {}
-): Promise<FetchUserEmotesResult> => {
-  const {
-    page = 1,
-    limit = 50,
-    includeForSale = true,
-    type = 'all',
-    sortBy = 'newest'
-  } = options;
-
-  try {
-    const skip = (page - 1) * limit;
     
+    if (error instanceof EmoteFetchError) {
+      throw error;
+    }
+    
+    throw new EmoteFetchError(
+      'Failed to fetch user emotes',
+      'DATABASE_ERROR',
+      500
+    );
+  }
+}
+
+// Enhanced function with comprehensive options
+export async function fetchUserEmotesWithOptions(
+  userId: string, 
+  options: EmoteFetchOptions = {}
+): Promise<{
+  emotes: EmoteWithForSale[];
+  total: number;
+  hasMore: boolean;
+}> {
+  try {
+    if (!userId) {
+      throw new EmoteFetchError('User ID is required', 'VALIDATION_ERROR', 400);
+    }
+
+    const {
+      limit = 50,
+      offset = 0,
+      includeMetadata = true,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      filterByType
+    } = options;
+
     // Build where clause
-    const where: Prisma.EmoteWhereInput = {
+    const whereClause: any = {
       userId: userId,
     };
 
-    // Add type filter
-    if (type === 'images') {
-      where.isVideo = false;
-    } else if (type === 'videos') {
-      where.isVideo = true;
+    if (filterByType) {
+      whereClause.style = filterByType;
     }
 
-    // Build order by clause
-    let orderBy: Prisma.EmoteOrderByWithRelationInput;
-    switch (sortBy) {
-      case 'oldest':
-        orderBy = { createdAt: 'asc' };
-        break;
-      case 'prompt':
-        orderBy = { prompt: 'asc' };
-        break;
-      case 'newest':
-      default:
-        orderBy = { createdAt: 'desc' };
-        break;
-    }
+    // Get total count for pagination
+    const total = await db.emote.count({
+      where: whereClause
+    });
 
-    // Execute queries concurrently
-    const [emotes, total] = await Promise.all([
-      db.emote.findMany({
-        where,
-        include: includeForSale ? {
-          emoteForSale: true,
-        } : undefined,
-        orderBy,
-        skip,
-        take: limit,
-      }),
-      db.emote.count({ where })
-    ]);
+    // Fetch emotes with options
+    const emotes = await db.emote.findMany({
+      where: whereClause,
+      orderBy: {
+        [sortBy]: sortOrder
+      },
+      take: limit,
+      skip: offset,
+      include: includeMetadata ? {
+        emoteForSale: {
+          select: {
+            id: true,
+            price: true,
+            status: true,
+            type: true,
+          }
+        }
+      } : undefined
+    });
 
-    const hasMore = skip + emotes.length < total;
+    const hasMore = offset + limit < total;
 
     return {
-      emotes: emotes as EmoteWithForSale[],
+      emotes,
       total,
-      hasMore,
-      page,
-      limit
+      hasMore
     };
   } catch (error) {
     console.error('Error fetching user emotes with options:', error);
-    throw new Error('Failed to fetch user emotes');
+    
+    if (error instanceof EmoteFetchError) {
+      throw error;
+    }
+    
+    throw new EmoteFetchError(
+      'Failed to fetch user emotes with options',
+      'DATABASE_ERROR',
+      500
+    );
   }
-});
+}
 
-// Fast fetch for editor (only essential data)
-export const fetchUserEmotesForEditor = cache(async (userId: string): Promise<Emote[]> => {
+// Optimized function specifically for editor performance
+export async function fetchUserEmotesForEditor(userId: string): Promise<Emote[]> {
   try {
+    if (!userId) {
+      throw new EmoteFetchError('User ID is required', 'VALIDATION_ERROR', 400);
+    }
+
+    // Fetch only essential data for editor performance
     const emotes = await db.emote.findMany({
       where: {
         userId: userId,
       },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      take: 100, // Limit for performance
       select: {
         id: true,
         prompt: true,
         imageUrl: true,
-        isVideo: true,
         createdAt: true,
         userId: true,
         style: true,
         model: true,
         videoUrl: true,
         originalCreatorId: true,
+        isVideo: true,
         postedToInstagram: true
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: 100, // Limit for performance in editor
+      }
     });
-    
+
     return emotes;
   } catch (error) {
     console.error('Error fetching user emotes for editor:', error);
-    throw new Error('Failed to fetch user emotes for editor');
+    
+    if (error instanceof EmoteFetchError) {
+      throw error;
+    }
+    
+    throw new EmoteFetchError(
+      'Failed to fetch user emotes for editor',
+      'DATABASE_ERROR',
+      500
+    );
   }
-});
+}
+
+// Utility function to prefetch emotes (for caching)
+export async function prefetchUserEmotes(userId: string): Promise<void> {
+  try {
+    // This can be used for background prefetching
+    await fetchUserEmotesForEditor(userId);
+  } catch (error) {
+    // Silently fail for prefetch operations
+    console.warn('Prefetch emotes failed:', error);
+  }
+}
 
 // Cache with different revalidation periods for different use cases
 export const revalidate = 120; // Default revalidation

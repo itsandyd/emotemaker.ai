@@ -26,6 +26,8 @@ import { VideoSidebar } from "./video-sidebar"
 import { VideoControls } from './video-controls'
 import { AnimationSidebar } from './animation-sidebar'
 import Konva from 'konva'
+import { Card } from "@/components/ui/card"
+import { cn } from "@/lib/utils"
 
 interface EditorProps {
   userId: string;
@@ -116,109 +118,261 @@ export const Editor = ({
     // The editor will be updated via the useEffect above
   }, []);
 
+  // Calculate optimal canvas size to maintain 1:1 aspect ratio
+  const calculateCanvasSize = useCallback(() => {
+    if (typeof window === 'undefined') return 512; // Default for SSR
+    
+    // Dynamic calculation based on viewport
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    
+    // Account for UI elements dynamically
+    const sidebarWidth = vw < 768 ? 0 : 80; // Mobile vs desktop sidebar
+    const toolSidebarWidth = vw < 768 ? 0 : 240; // Tool sidebar width
+    const navbarHeight = 60; // Navbar height
+    const toolbarHeight = 60; // Toolbar height  
+    const footerHeight = 40; // Footer height
+    const padding = vw < 768 ? 24 : 48; // Mobile vs desktop padding
+    
+    // Calculate available space
+    const availableWidth = vw - sidebarWidth - toolSidebarWidth - padding;
+    const availableHeight = vh - navbarHeight - toolbarHeight - footerHeight - padding;
+    
+    // Use the smaller dimension to maintain square aspect ratio
+    const maxSize = Math.min(availableWidth, availableHeight);
+    
+    // Responsive size constraints
+    const minSize = vw < 768 ? 200 : 256; // Smaller minimum on mobile
+    const maxSizeLimit = vw < 768 ? 400 : 512; // Smaller maximum on mobile
+    
+    return Math.max(minSize, Math.min(maxSizeLimit, maxSize));
+  }, []);
+
+  const [canvasSize, setCanvasSize] = useState(calculateCanvasSize);
+
+  // Update canvas size on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setCanvasSize(calculateCanvasSize());
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [calculateCanvasSize]);
+
+  // Update editor stage size when canvas size changes
+  useEffect(() => {
+    if (editor?.stage && containerRef.current) {
+      const stage = editor.stage;
+      stage.width(canvasSize);
+      stage.height(canvasSize);
+      stage.batchDraw();
+    }
+  }, [canvasSize, editor?.stage]);
+
   return (
-    <div className="flex flex-col h-full">
-      <Navbar 
-        activeTool={activeTool}
-        onChangeActiveTool={onChangeActiveTool}
-      />
-      <div className="flex flex-1 overflow-hidden"> 
-        <Sidebar 
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-          workspaceType={initialWorkspaceType}
-          editor={editor}
-        />
-        <ShapeSidebar 
-          editor={editor}
+    <div className="flex flex-col h-full bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      {/* Enhanced Navbar with glassmorphism effect */}
+      <div className="relative z-50 backdrop-blur-md bg-white/90 border-b border-white/20 shadow-sm">
+        <Navbar 
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-        <FillColorSidebar 
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <StrokeColorSidebar 
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <StrokeWidthSidebar 
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <OpacitySidebar 
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <TextSidebar 
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <FontSidebar 
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <EmoteSidebar 
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-          emotes={emotes}
-          setCurrentPrompt={handleSetCurrentPrompt}
-        />
-        <VideoSidebar 
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-          emotes={emotes}
-          setCurrentPrompt={handleSetCurrentPrompt}
-        />
-        <EmoteGeneratorSidebar 
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-          emotes={emotes}
-          addEmote={addEmote}
-          currentPrompt={currentPrompt}
-        />
-        <FilterSidebar 
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <DrawSidebar 
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <InpaintSidebar
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <AnimationSidebar
-          editor={editor}
-          activeTool={activeTool}
-          onChangeActiveTool={onChangeActiveTool}
-        />
-        <main className="flex-1 flex flex-col overflow-hidden">
-          <Toolbar 
-            editor={editor}
+      </div>
+      
+      <div className="flex flex-1 overflow-hidden relative"> 
+        {/* Enhanced Main Sidebar */}
+        <div className="relative z-40 backdrop-blur-md bg-white/95 border-r border-white/20 shadow-lg">
+          <Sidebar 
             activeTool={activeTool}
             onChangeActiveTool={onChangeActiveTool}
-            addEmote={addEmote}
-            currentPrompt={currentPrompt}
-            subscriptionType={subscriptionType}
-            isActiveSubscriber={isActiveSubscriber}
+            workspaceType={initialWorkspaceType}
+            editor={editor}
           />
-          <div className="flex-1 bg-muted relative overflow-auto">
+        </div>
+
+        {/* Tool Sidebars with improved styling and transitions */}
+        <div className="relative z-30">
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            activeTool === "shapes" ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none absolute"
+          )}>
+            <ShapeSidebar 
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+          </div>
+          
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            activeTool === "fill" ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none absolute"
+          )}>
+            <FillColorSidebar 
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+          </div>
+          
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            activeTool === "stroke" ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none absolute"
+          )}>
+            <StrokeColorSidebar 
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+          </div>
+          
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            activeTool === "stroke-width" ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none absolute"
+          )}>
+            <StrokeWidthSidebar 
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+          </div>
+          
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            activeTool === "opacity" ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none absolute"
+          )}>
+            <OpacitySidebar 
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+          </div>
+          
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            activeTool === "text" ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none absolute"
+          )}>
+            <TextSidebar 
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+          </div>
+          
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            activeTool === "font" ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none absolute"
+          )}>
+            <FontSidebar 
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+          </div>
+          
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            activeTool === "emotes" ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none absolute"
+          )}>
+            <EmoteSidebar 
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+              emotes={emotes}
+              setCurrentPrompt={handleSetCurrentPrompt}
+            />
+          </div>
+          
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            activeTool === "video-settings" ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none absolute"
+          )}>
+            <VideoSidebar 
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+              emotes={emotes}
+              setCurrentPrompt={handleSetCurrentPrompt}
+            />
+          </div>
+          
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            activeTool === "emote-generator" ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none absolute"
+          )}>
+            <EmoteGeneratorSidebar 
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+              emotes={emotes}
+              addEmote={addEmote}
+              currentPrompt={currentPrompt}
+            />
+          </div>
+          
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            activeTool === "filter" ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none absolute"
+          )}>
+            <FilterSidebar 
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+          </div>
+          
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            activeTool === "draw" ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none absolute"
+          )}>
+            <DrawSidebar 
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+          </div>
+          
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            activeTool === "inpaint" ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none absolute"
+          )}>
+            <InpaintSidebar
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+          </div>
+          
+          <div className={cn(
+            "transition-all duration-300 ease-in-out",
+            activeTool === "animate" ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none absolute"
+          )}>
+            <AnimationSidebar
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+            />
+          </div>
+        </div>
+
+        <main className="flex-1 flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100">
+          {/* Enhanced Toolbar */}
+          <div className="relative z-20 backdrop-blur-md bg-white/90 border-b border-white/20 shadow-sm">
+            <Toolbar 
+              editor={editor}
+              activeTool={activeTool}
+              onChangeActiveTool={onChangeActiveTool}
+              addEmote={addEmote}
+              currentPrompt={currentPrompt}
+              subscriptionType={subscriptionType}
+              isActiveSubscriber={isActiveSubscriber}
+            />
+          </div>
+          
+          {/* Enhanced Canvas Area */}
+          <div className="flex-1 relative overflow-auto p-6 custom-scrollbar">
             <div 
-              className="flex items-center justify-center min-h-full p-4"
+              className="flex items-center justify-center min-h-full"
               onClick={(e) => {
                 // Only clear if clicking the wrapper div directly
                 if (e.target === e.currentTarget && editor?.selectedNode) {
@@ -235,19 +389,37 @@ export const Editor = ({
                 }
               }}
             >
-              <div 
-                ref={containerRef} 
-                className="w-[512px] h-[512px] bg-white shadow-lg"
-                style={{
-                  maxWidth: 'calc(100vw - 2rem)',
-                  maxHeight: 'calc(100vw - 2rem)'
-                }}
-              >
-                {/* Konva stage will be rendered here */}
-              </div>
+                            {/* Enhanced Canvas Container - Always 1:1 Aspect Ratio */}
+              <Card className="relative overflow-hidden shadow-2xl border-0 bg-white/95 backdrop-blur-sm editor-canvas-container hover-lift">
+                <div className="absolute inset-0 bg-gradient-to-br from-white via-slate-50 to-slate-100 opacity-50" />
+                <div 
+                  ref={containerRef} 
+                  className="relative bg-white"
+                  style={{
+                    width: `${canvasSize}px`,
+                    height: `${canvasSize}px`,
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    minWidth: '256px',
+                    minHeight: '256px'
+                  }}
+                >
+                  {/* Konva stage will be rendered here */}
+                </div>
+                
+                {/* Canvas decorative elements with subtle animations */}
+                <div className="absolute -top-2 -left-2 w-4 h-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full opacity-60 animate-pulse" />
+                <div className="absolute -top-2 -right-2 w-4 h-4 bg-gradient-to-br from-green-500 to-teal-600 rounded-full opacity-60 animate-pulse delay-200" />
+                <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-gradient-to-br from-orange-500 to-red-600 rounded-full opacity-60 animate-pulse delay-700" />
+                <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-gradient-to-br from-pink-500 to-rose-600 rounded-full opacity-60 animate-pulse delay-500" />
+              </Card>
             </div>
           </div>
-          <Footer />
+          
+          {/* Enhanced Footer */}
+          <div className="relative z-10 backdrop-blur-md bg-white/90 border-t border-white/20">
+            <Footer />
+          </div>
         </main>
       </div>
     </div>

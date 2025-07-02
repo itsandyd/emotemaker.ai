@@ -149,11 +149,27 @@ export const Toolbar = ({
                     </Button>
                 </Hint>
             </div>
-            {isVideo && editor && (
+            {(() => {
+                const shouldRenderTimeline = isVideo && editor && editor.selectedNode && 
+                    (editor.selectedNode as VideoObject).attrs?.videoElement;
+                
+                console.log('VideoTimeline render check:', {
+                    isVideo,
+                    hasEditor: !!editor,
+                    hasSelectedNode: !!editor?.selectedNode,
+                    hasVideoElement: !!(editor.selectedNode as VideoObject)?.attrs?.videoElement,
+                    shouldRender: shouldRenderTimeline,
+                    selectedNodeType: editor?.selectedNode?.getAttr('objectType'),
+                    attrs: (editor.selectedNode as VideoObject)?.attrs
+                });
+                
+                return shouldRenderTimeline;
+            })() && (
                 <>
                     <div className="flex-1 h-full flex items-center px-2">
                         <VideoTimeline
                             videoElement={(editor.selectedNode as VideoObject).attrs.videoElement}
+                            videoNode={editor.selectedNode}
                             startTime={startTime}
                             endTime={endTime}
                             duration={editor.getVideoDuration()}

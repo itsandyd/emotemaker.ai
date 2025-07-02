@@ -12,22 +12,22 @@ export const useAutoResize = ({ stage, container }: UseAutoResizeProps) => {
 
         const containerWidth = container.offsetWidth;
         const containerHeight = container.offsetHeight;
-        const stageWidth = 512; // Fixed stage width
-        const stageHeight = 512; // Fixed stage height
+        
+        // Ensure container is square (1:1 aspect ratio)
+        const size = Math.min(containerWidth, containerHeight);
+        
+        // Use container size as stage size to maintain 1:1 ratio
+        const stageWidth = size;
+        const stageHeight = size;
 
-        // Calculate scale to fit
-        const scaleX = containerWidth / stageWidth;
-        const scaleY = containerHeight / stageHeight;
-        const scale = Math.min(scaleX, scaleY, 1); // Never scale up beyond original size
-
-        // Update stage size while maintaining aspect ratio
+        // Set stage to fill the container exactly (no scaling needed for square container)
         stage.width(stageWidth);
         stage.height(stageHeight);
-        stage.scale({ x: scale, y: scale });
+        stage.scale({ x: 1, y: 1 }); // 1:1 scale since container is already the right size
 
-        // Center the stage in the container
-        stage.x((containerWidth - stageWidth * scale) / 2);
-        stage.y((containerHeight - stageHeight * scale) / 2);
+        // Center the stage in the container (should be 0,0 for square container)
+        stage.x(0);
+        stage.y(0);
 
         // Make sure all layers are visible
         stage.getLayers().forEach(layer => {

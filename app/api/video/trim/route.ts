@@ -62,140 +62,92 @@ export async function POST(req: Request) {
       console.log("Preparing request to fal.ai FFmpeg API...");
       console.log(`Trim parameters: startTime=${startTimeSeconds}s (${startTimeMs}ms), duration=${durationSeconds}s (${durationMs}ms)`);
       
-      // APPROACH 1: Try using an FFmpeg command first
-      console.log("ATTEMPT 1: Using FFmpeg command approach");
+      // Use ONLY the working Compose API (other endpoints don't exist on fal.ai)
+      console.log("🎬 VIDEO TRIM: Using fal-ai/ffmpeg-api/compose (only working endpoint)");
       
-      // Construct a direct FFmpeg command with explicit trim parameters
-      const input1 = {
-        ffmpeg_commands: [
-          "-ss", startTimeSeconds.toString(),
-          "-i", videoUrl,
-          "-t", durationSeconds.toString(),
-          "-c:v", "libx264",
-          "-preset", "medium",
-          "-crf", "22",
-          "-c:a", "aac",
-          "-strict", "-2"
-        ]
+      // Ensure duration is at least 100ms to avoid API errors
+      const minDurationMs = Math.max(durationMs, 100);
+      
+      console.log("🔧 TRIM PARAMETERS:", {
+        sourceVideo: videoUrl,
+        startTimeSeconds: startTimeSeconds,
+        endTimeSeconds: endTimeSeconds,
+        durationSeconds: durationSeconds,
+        startTimeMs: startTimeMs,
+        durationMs: minDurationMs,
+        expectedOutputDuration: `${(minDurationMs/1000).toFixed(3)}s`
+      });
+      
+      // Use Compose API with corrected trim parameters
+      const input = {
+        tracks: [
+          {
+            id: "video-track",
+            type: "video", 
+            keyframes: [
+              {
+                timestamp: 0,                    // Output timeline starts at 0
+                duration: minDurationMs,         // How long the output should be (ms)
+                url: videoUrl,                   // Source video URL
+                trim_start: startTimeMs,         // Where to start in source video (ms)
+                trim_duration: minDurationMs     // How much to take from source (ms)
+              }
+            ]
+          }
+        ],
+        output: {
+          format: "mp4",
+          video_codec: "h264",
+          audio_codec: "aac",
+          // Add quality settings for better Vercel performance
+          video_bitrate: "1500k",  // Lower bitrate for faster processing
+          audio_bitrate: "128k"
+        }
       };
       
-      console.log("Command approach request:", JSON.stringify(input1, null, 2));
+      console.log("📤 Compose API request:", JSON.stringify(input, null, 2));
       
       let result: FalApiResponse | null = null;
+      let successfulApproach = "";
       
       try {
-        // Try the command approach first
-        result = await fal.subscribe("fal-ai/ffmpeg-api", {
-          input: input1,
+        result = await fal.subscribe("fal-ai/ffmpeg-api/compose", {
+          input: input,
           logs: true,
           onQueueUpdate: (update) => {
-            console.log(`Command approach queue status: ${update.status}`);
+            console.log(`📺 Compose API status: ${update.status}`);
             if (update.status === "IN_PROGRESS") {
               update.logs?.map(log => log.message).forEach(message => {
-                console.log(`Command log: ${message}`);
+                console.log(`🎬 Compose log: ${message}`);
+                // Log important FFmpeg information
+                if (message.includes("Duration:")) {
+                  console.log(`⏱️ IMPORTANT: ${message}`);
+                }
               });
             }
           },
         }) as FalApiResponse;
         
-        console.log("Command approach response:", JSON.stringify(result, null, 2));
-      } catch (cmdError) {
-        console.log("Command approach failed:", cmdError);
-        // If command approach fails, continue to next approach
-      }
-      
-      // APPROACH 2: If approach 1 failed or if we want to try the compose API anyway
-      if (!result || !result.data?.video_url) {
-        console.log("ATTEMPT 2: Using Compose API approach");
+        console.log("📥 Compose API response:", JSON.stringify(result, null, 2));
+        if (result?.data?.video_url) {
+          successfulApproach = "compose-api";
+          console.log("✅ Video trimming completed successfully");
+        }
+      } catch (composeError) {
+        console.log("❌ Compose API failed:", composeError);
         
-        // Ensure duration is at least 100ms to avoid API errors
-        const minDurationMs = Math.max(durationMs, 100);
-        
-        // Structure the input according to the fal.ai/ffmpeg-api/compose documentation
-        const input2 = {
-          tracks: [
-            {
-              id: "video-track",
-              type: "video",
-              keyframes: [
-                {
-                  timestamp: 0,                 // Output timestamp at 0ms
-                  duration: minDurationMs,      // Duration in output (ms)
-                  url: videoUrl,                // Source video URL
-                  trim_start: startTimeMs,      // Start time in source (ms)
-                  trim_duration: minDurationMs  // Duration to extract (ms)
-                }
-              ]
-            }
-          ],
-          // Explicitly set output settings with higher quality parameters
-          output: {
-            format: "mp4",
-            video_codec: "h264",
-            video_quality: "high",     // Set high quality
-            audio_codec: "aac",
-            maintain_aspect_ratio: true,
-            scale: {                   // Preserve original dimensions
-              width: -1,
-              height: -1
-            }
+        // If Compose API fails, suggest alternative solutions
+        return NextResponse.json({
+          success: false,
+          error: "Video trimming service unavailable",
+          message: "The video trimming service is currently unavailable. Please try again later or contact support.",
+          debug: {
+            startTimeSeconds,
+            endTimeSeconds,
+            durationSeconds,
+            error: composeError instanceof Error ? composeError.message : 'Unknown error'
           }
-        };
-        
-        console.log("Compose approach request:", JSON.stringify(input2, null, 2));
-        
-        try {
-          result = await fal.subscribe("fal-ai/ffmpeg-api/compose", {
-            input: input2,
-            logs: true,
-            onQueueUpdate: (update) => {
-              console.log(`Compose approach queue status: ${update.status}`);
-              if (update.status === "IN_PROGRESS") {
-                update.logs?.map(log => log.message).forEach(message => {
-                  console.log(`Compose log: ${message}`);
-                });
-              }
-            },
-          }) as FalApiResponse;
-          
-          console.log("Compose approach response:", JSON.stringify(result, null, 2));
-        } catch (composeError) {
-          console.log("Compose approach failed:", composeError);
-          // Continue to next approach if this fails
-        }
-      }
-      
-      // APPROACH 3: Try using the dedicated trim endpoint as a last resort
-      if (!result || !result.data?.video_url) {
-        console.log("ATTEMPT 3: Using dedicated trim endpoint");
-        
-        // Use the dedicated trim endpoint which is simpler
-        const input3 = {
-          input_video: videoUrl,
-          start_time: startTimeSeconds,
-          end_time: endTimeSeconds
-        };
-        
-        console.log("Trim endpoint request:", JSON.stringify(input3, null, 2));
-        
-        try {
-          result = await fal.subscribe("fal-ai/ffmpeg-api/trim", {
-            input: input3,
-            logs: true,
-            onQueueUpdate: (update) => {
-              console.log(`Trim endpoint status: ${update.status}`);
-              if (update.status === "IN_PROGRESS") {
-                update.logs?.map(log => log.message).forEach(message => {
-                  console.log(`Trim log: ${message}`);
-                });
-              }
-            },
-          }) as FalApiResponse;
-          
-          console.log("Trim endpoint response:", JSON.stringify(result, null, 2));
-        } catch (trimError) {
-          console.log("Trim endpoint failed:", trimError);
-        }
+        }, { status: 503 });
       }
       
       if (!result || !result.data || !result.data.video_url) {
@@ -228,7 +180,15 @@ export async function POST(req: Request) {
           durationSeconds,
           startTimeMs,
           durationMs,
-          approach: result.requestId
+          requestId: result.requestId,
+          approachUsed: successfulApproach,
+          vercelOptimized: true,
+          expectedDuration: `${(minDurationMs/1000).toFixed(3)}s`,
+          trimParametersUsed: {
+            trim_start: startTimeMs,
+            trim_duration: minDurationMs,
+            output_duration: minDurationMs
+          }
         }
       });
 
