@@ -6,30 +6,33 @@ import { Button } from "@/components/ui/button"
 import { CardContent, Card } from "@/components/ui/card"
 import { Emote, EmoteForSale } from "@prisma/client"
 import Image from "next/image"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import axios from "axios"
 import toast from "react-hot-toast"
 import { useRouter } from "next/navigation"
-import Watermark from '@uiw/react-watermark'
-import { AxiosError } from 'axios';
+import { ChevronLeft, ChevronRight } from "lucide-react"
 
 interface ListEmoteProps {
-  emote: Emote;
-  emoteForSale: EmoteForSale | null;
+  emotes: Emote[];
+  totalPages: number;
+  currentPage: number;
+  onPageChange: (page: number) => void;
 }
 
-export default function ListEmote({ emote, emoteForSale }: ListEmoteProps) {
+export default function ListEmote({ emotes, totalPages, currentPage, onPageChange }: ListEmoteProps) {
   const router = useRouter();
-  const [watermarkedUrl, setWatermarkedUrl] = useState(emoteForSale?.watermarkedUrl || '');
-  const [price, setPrice] = useState(emoteForSale?.price?.toString() || '');
+  const [selectedEmote, setSelectedEmote] = useState<Emote | null>(null);
+  const [watermarkedUrl, setWatermarkedUrl] = useState('');
+  const [price, setPrice] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleWatermark = async () => {
+    if (!selectedEmote) return;
     setIsLoading(true);
     try {
       const response = await axios.post('/api/emotes/watermark', {
-        emoteId: emote.id,
-        imageUrl: emote.imageUrl,
+        emoteId: selectedEmote.id,
+        imageUrl: selectedEmote.imageUrl,
       }, {
         responseType: 'arraybuffer'
       });
@@ -38,14 +41,27 @@ export default function ListEmote({ emote, emoteForSale }: ListEmoteProps) {
 
       const uploadResponse = await axios.post('/api/emotes/watermark/upload-watermark', {
         imageBase64,
-        emoteId: emote.id,
+        emoteId: selectedEmote.id,
       });
 
-      setWatermarkedUrl(uploadResponse.data.watermarkedUrl);
-      toast.success('Watermark added and uploaded successfully!');
+      console.log('Upload response:', uploadResponse.data); // Add this line for debugging
+
+      if (uploadResponse.data.watermarkedUrl) {
+        setWatermarkedUrl(uploadResponse.data.watermarkedUrl);
+        toast.success('Watermark added and uploaded successfully!');
+      } else {
+        throw new Error('Failed to get watermarked URL');
+      }
     } catch (error) {
       console.error('Failed to add watermark:', error);
-      toast.error('Failed to add watermark. Please try again.');
+      if (axios.isAxiosError(error)) {
+        console.error('Axios error response:', error.response?.data); // Add this line for debugging
+        toast.error(error.response?.data?.error || 'Failed to add watermark. Please try again.');
+      } else if (error instanceof Error) {
+        toast.error(error.message || 'Failed to add watermark. Please try again.');
+      } else {
+        toast.error('An unknown error occurred while adding watermark. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -53,13 +69,14 @@ export default function ListEmote({ emote, emoteForSale }: ListEmoteProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedEmote) return;
     setIsLoading(true);
 
     try {
       const response = await axios.post('/api/stripe/list-emote', {
-        emoteId: emote.id,
+        emoteId: selectedEmote.id,
         price: parseFloat(price),
-        watermarkedUrl: watermarkedUrl, // Pass the watermarked URL
+        watermarkedUrl: watermarkedUrl,
       });
 
       if (response.data.success) {
@@ -83,57 +100,107 @@ export default function ListEmote({ emote, emoteForSale }: ListEmoteProps) {
   };
 
   return (
-    <main className="w-full max-w-6xl mx-auto px-4 py-8 md:px-6 md:py-12">
-      <Card>
-        <CardContent className="mt-8">
-          <form onSubmit={handleSubmit} className="grid gap-4">
-            <div className="grid gap-2">
-              {/* <Label htmlFor="imageUrl">{emote.prompt}</Label> */}
-              <div className="flex flex-col items-center justify-center p-6 aspect-square">
-                <Image
-                  alt="Emote"
-                  className="w-full h-full object-contain"
-                  height={128}
-                  src={watermarkedUrl || emote.imageUrl || "/placeholder.png"}
-                  style={{
-                    aspectRatio: "128/128",
-                    objectFit: "cover",
-                  }}
-                  width={128}
-                />
-              </div>
+    <div className="w-full max-w-7xl mx-auto">
+      <div className="grid md:grid-cols-3 gap-8">
+        <Card className="md:col-span-2">
+          <CardContent className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Select an Emote</h2>
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-4 max-h-[calc(100vh-300px)] overflow-y-auto p-2">
+              {emotes.map((emote) => (
+                <div 
+                  key={emote.id} 
+                  className={`relative cursor-pointer rounded-lg overflow-hidden transition-all duration-200 ${selectedEmote?.id === emote.id ? 'ring-2 ring-primary scale-105' : 'hover:scale-105'}`}
+                  onClick={() => setSelectedEmote(emote)}
+                >
+                  <Image
+                    src={emote.imageUrl || "/placeholder.png"}
+                    alt={emote.prompt || "Emote"}
+                    width={100}
+                    height={100}
+                    className="w-full h-auto object-cover aspect-square"
+                  />
+                </div>
+              ))}
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="watermarkedUrl">Watermark</Label>
-              <div className="flex items-center space-x-2">
-                <Button type="button" onClick={handleWatermark} disabled={isLoading || !!watermarkedUrl}>
-                  {watermarkedUrl ? "Watermark Added" : "Add Watermark"}
+            <div className="flex justify-between items-center mt-6">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4 mr-2" /> Previous
+              </Button>
+              <span className="text-sm font-medium">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next <ChevronRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <h2 className="text-xl font-semibold mb-4">List Your Emote</h2>
+            {selectedEmote ? (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="flex justify-center mb-4">
+                  <Image
+                    alt="Selected Emote"
+                    className="w-32 h-32 object-contain rounded-lg"
+                    src={watermarkedUrl || selectedEmote.imageUrl || "/placeholder.png"}
+                    width={128}
+                    height={128}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="watermark">Watermark</Label>
+                  <Button 
+                    type="button" 
+                    onClick={handleWatermark} 
+                    disabled={isLoading || !!watermarkedUrl}
+                    className="w-full mt-1"
+                  >
+                    {watermarkedUrl ? "Watermark Added" : "Add Watermark"}
+                  </Button>
+                </div>
+                <div>
+                  <Label htmlFor="prompt">Prompt</Label>
+                  <p className="mt-1 text-sm">{selectedEmote.prompt}</p>
+                </div>
+                <div>
+                  <Label htmlFor="price">Price (minimum $1.00)</Label>
+                  <Input 
+                    id="price" 
+                    placeholder="Enter the price" 
+                    type="number"
+                    min="1.00"
+                    step="0.01"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    required 
+                    className="mt-1"
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading || !watermarkedUrl}>
+                  {isLoading ? "Listing..." : "List Emote"}
                 </Button>
+              </form>
+            ) : (
+              <div className="text-center text-gray-500">
+                Select an emote to list it for sale
               </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="prompt">Prompt</Label>
-              <p>{emote.prompt}</p>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="price">Price (minimum $1.00)</Label>
-              <Input 
-                id="price" 
-                placeholder="Enter the price" 
-                step="0.01" 
-                type="number"
-                min="1.00"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                required 
-              />
-            </div>
-            <Button type="submit" disabled={isLoading || !watermarkedUrl}>
-              {isLoading ? "Listing..." : "List Emote"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </main>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }

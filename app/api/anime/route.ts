@@ -86,7 +86,7 @@ export async function POST(
       return new NextResponse("You have run out of credits.")
     }
 
-    const finalPrompt = `Create a single anime-style emote icon of a character with ${hair} hair style and color, ${eyecolor} eye color, and ${additionalAttributes}. The character should express ${emotion} emotion. Focus on the character’s facial features to vividly convey the emotion, with exaggerated anime-style eyes and mouth. The background should be simple or transparent to keep the emphasis on the emote.`
+    const finalPrompt = `Create a single anime-style emote icon of a character with ${hair} hair style and color, ${eyecolor} eye color, and ${additionalAttributes}. The character should express ${emotion} emotion. Focus on the character's facial features to vividly convey the emotion, with exaggerated anime-style eyes and mouth. The background should be simple or transparent to keep the emphasis on the emote.`
 
     const response = await openai.images.generate({
         model: "dall-e-3",
@@ -95,7 +95,11 @@ export async function POST(
         quality: "standard",
         // n: amount,
         // size: resolution,
-      });
+    });
+
+    if (!response.data || response.data.length === 0) {
+        return new NextResponse("Failed to generate image", { status: 500 });
+    }
 
     console.log(response.data[0].url);
 

@@ -73,24 +73,34 @@ model User {
   emote              Emote[]
   isActiveSubscriber Boolean           @default(false) // New field to indicate active subscription status
   subscriptionType   SubscriptionType? // New field for subscription type
-  EmoteForSale       EmoteForSale[]
+  emoteForSale       EmoteForSale[]
+  emotePack          EmotePack[] // Add this new relation
   boards             Board[] // New relation field for boards
+  isAdmin            Boolean           @default(false) // Add this line
+  emotes             UserEmote[]
 
   @@index([userSubscriptionId])
 }
 
 model Emote {
-  id           String        @id @default(cuid())
-  prompt       String?
-  style        String? // This will store the emote type
-  model        String? // This will store the selected model
-  imageUrl     String?       @db.Text
-  user         User?         @relation(fields: [userId], references: [id])
-  userId       String?
-  createdAt    DateTime?     @default(now())
-  emoteForSale EmoteForSale?
+  id                String        @id @default(cuid())
+  prompt            String?       @db.Text
+  style             String?       @db.Text
+  model             String?       @db.Text
+  imageUrl          String?       @db.Text
+  videoUrl          String?       @db.Text // Optional video URL
+  originalCreatorId String?
+  createdAt         DateTime?     @default(now())
+  emoteForSale      EmoteForSale?
+  isVideo           Boolean       @default(false)
+
+  users             UserEmote[]
+  User              User?       @relation(fields: [userId], references: [id])
+  userId            String?
+  postedToInstagram Boolean     @default(false)
 
   @@index([userId])
+  @@index([originalCreatorId])
 }
 
 enum EmoteStatus {
@@ -126,8 +136,9 @@ model EmoteForSale {
   stripePriceAmount   Int? // Amount in cents
   stripePriceCurrency String? @default("usd")
 
-  emote    Emote      @relation(fields: [emoteId], references: [id])
-  purchase Purchase[]
+  emote          Emote           @relation(fields: [emoteId], references: [id])
+  purchase       Purchase[]
+  emotePackItems EmotePackItem[]
 
   @@index([userId])
 }
@@ -213,7 +224,7 @@ model OrgSubscription {
   id                     String   @id @default(cuid())
   orgId                  String   @unique
   stripeCustomerId       String
-  stripeSubscriptionId   String   @unique
+  stripeSubscriptionId   String
   stripePriceId          String
   stripeCurrentPeriodEnd DateTime
 
@@ -221,3 +232,94 @@ model OrgSubscription {
 }
 
 // Existing models (User, Profile, Emote, etc.) remain unchanged
+
+model Article {
+  id          String    @id @default(cuid())
+  title       String
+  content     String    @db.Text
+  category    String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  slug        String    @unique
+  author      String?
+  publishedAt DateTime?
+
+  @@index([category])
+  @@index([slug])
+}
+
+// Add a new model for the many-to-many relation
+model UserEmote {
+  id        String   @id @default(cuid())
+  userId    String
+  emoteId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  emote Emote @relation(fields: [emoteId], references: [id])
+
+  @@unique([userId, emoteId])
+  @@index([userId])
+  @@index([emoteId])
+}
+
+model Video {
+  id          String   @id @default(cuid())
+  userId      String
+  prompt      String
+  videoUrl    String
+  originalUrl String
+  createdAt   DateTime @default(now())
+}
+
+model EmotePack {
+  id                  String      @id @default(cuid())
+  name                String
+  description         String?     @db.Text
+  imageUrl            String?     @db.Text
+  watermarkedUrl      String?     @db.Text
+  price               Float
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  status              EmoteStatus @default(DRAFT)
+  coverEmoteForSaleId String? // Field to store the ID of the EmoteForSale used as cover
+
+  // New fields for Stripe integration
+  stripeProductId     String? @unique
+  stripePriceId       String? @unique
+  stripePriceAmount   Int? // Amount in cents
+  stripePriceCurrency String? @default("usd")
+
+  user           User?               @relation(fields: [userId], references: [id])
+  userId         String?
+  emotePackItems EmotePackItem[]
+  packPurchases  EmotePackPurchase[]
+
+  @@index([userId])
+}
+
+model EmotePackItem {
+  id             String   @id @default(cuid())
+  emotePackId    String
+  emoteForSaleId String
+  createdAt      DateTime @default(now())
+
+  emotePack    EmotePack    @relation(fields: [emotePackId], references: [id], onDelete: Cascade)
+  emoteForSale EmoteForSale @relation(fields: [emoteForSaleId], references: [id])
+
+  @@unique([emotePackId, emoteForSaleId])
+  @@index([emotePackId])
+  @@index([emoteForSaleId])
+}
+
+model EmotePackPurchase {
+  id              String   @id @default(cuid())
+  userId          String
+  emotePackId     String
+  paymentIntentId String
+  createdAt       DateTime @default(now())
+
+  emotePack EmotePack @relation(fields: [emotePackId], references: [id])
+
+  @@index([emotePackId])
+}

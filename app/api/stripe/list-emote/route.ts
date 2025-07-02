@@ -4,6 +4,8 @@ import { absoluteUrl } from "@/lib/utils";
 import { db } from "@/lib/db";
 import { stripe } from "@/lib/stripe";
 
+export const dynamic = 'force-dynamic';
+
 const settingsUrl = absoluteUrl("/profile");
 
 const MINIMUM_PRICE = 100; // $1.00 in cents

@@ -1,36 +1,55 @@
-import { auth } from "@clerk/nextjs/server"
-import { db } from "@/lib/db";
-import ListEmote from "../_components/list-emote";
+"use client"
 
-const MarketplacePage = async () => {
-  const { userId } = auth();
+import { useEffect, useState } from 'react';
+import { useAuth } from "@clerk/nextjs";
+import ListEmote from "../_components/list-emote";
+import { Emote } from "@prisma/client";
+import { getEmotes } from "@/actions/get-emotes";
+
+const ITEMS_PER_PAGE = 10;
+
+const MarketplacePage = () => {
+  const { userId } = useAuth();
+  const [emotes, setEmotes] = useState<Emote[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const fetchEmotes = async () => {
+      try {
+        const response = await fetch(`/api/emotes?page=${currentPage}&limit=${ITEMS_PER_PAGE}&userId=${userId}`);
+        const data = await response.json();
+        setEmotes(data.emotes);
+        setTotalPages(Math.ceil(data.total / ITEMS_PER_PAGE));
+      } catch (error) {
+        console.error('Failed to fetch emotes:', error);
+      }
+    };
+
+    fetchEmotes();
+  }, [userId, currentPage]);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
 
   if (!userId) {
     return <div>Please sign in to list emotes.</div>;
   }
 
-  const emotes = await db.emote.findMany({
-    where: {
-      userId: userId,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    include: {
-      emoteForSale: true,
-    }
-  });
-
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-4xl font-bold my-4">List Your Emotes</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {emotes.map((emote) => (
-          <ListEmote key={emote.id} emoteForSale={emote.emoteForSale} emote={emote} />
-        ))}
-      </div>
+      <ListEmote
+        emotes={emotes}
+        totalPages={totalPages}
+        currentPage={currentPage}
+        onPageChange={handlePageChange}
+      />
     </div>
   );
 }
 
-export default MarketplacePage
+export default MarketplacePage;

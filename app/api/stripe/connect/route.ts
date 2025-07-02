@@ -4,6 +4,8 @@ import { stripe } from "@/lib/stripe";
 import { db } from "@/lib/db";
 import Stripe from "stripe";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   try {
     const { userId } = auth();
@@ -25,7 +27,8 @@ export async function POST(req: Request) {
         const account = await stripe.accounts.retrieve(profile.stripeConnectAccountId);
         console.log("Stripe account verified:", account.id);
         
-        if (account.details_submitted) {
+        // Check if all requirements are met
+        if (account.requirements?.currently_due?.length === 0 && account.details_submitted) {
           console.log("Creating login link for existing Stripe account:", profile.stripeConnectAccountId);
           const loginLink = await stripe.accounts.createLoginLink(profile.stripeConnectAccountId);
           console.log("Login link created:", loginLink.url);
@@ -59,6 +62,7 @@ export async function POST(req: Request) {
   }
 }
 
+// The createNewStripeAccount function remains unchanged
 async function createNewStripeAccount(userId: string) {
   try {
     console.log("Creating Stripe account for user:", userId);

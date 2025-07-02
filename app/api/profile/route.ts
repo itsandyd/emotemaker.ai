@@ -3,9 +3,21 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { userId, name, bio, twitch, youtube, instagram, twitter, isPublic } = await req.json();
+    const body = await req.json();
+    const { userId, name, bio, twitch, youtube, instagram, twitter, isPublic } = body;
+
     if (!userId) {
-      return new NextResponse('User ID is required', { status: 400 });
+      return NextResponse.json(
+        { error: 'User ID is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!name) {
+      return NextResponse.json(
+        { error: 'Name is required' },
+        { status: 400 }
+      );
     }
 
     // Check if the profile exists
@@ -13,40 +25,39 @@ export async function POST(req: Request) {
       where: { userId },
     });
 
+    const profileData = {
+      name,
+      bio: bio || null,
+      twitch: twitch || null,
+      youtube: youtube || null,
+      instagram: instagram || null,
+      twitter: twitter || null,
+      isPublic: isPublic !== undefined ? isPublic : existingProfile?.isPublic ?? false
+    };
+
     let updatedProfile;
     if (existingProfile) {
       // Update existing profile
       updatedProfile = await db.profile.update({
         where: { userId },
-        data: { 
-          name, 
-          bio, 
-          twitch, 
-          youtube, 
-          instagram, 
-          twitter, 
-          isPublic: isPublic !== undefined ? isPublic : existingProfile.isPublic 
-        },
+        data: profileData,
       });
     } else {
-      // Create new profile if it doesn't exist
+      // Create new profile
       updatedProfile = await db.profile.create({
-        data: { 
-          userId, 
-          name, 
-          bio, 
-          twitch, 
-          youtube, 
-          instagram, 
-          twitter, 
-          isPublic: isPublic !== undefined ? isPublic : false 
+        data: {
+          userId,
+          ...profileData,
         },
       });
     }
 
-    return new NextResponse(JSON.stringify(updatedProfile), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    return NextResponse.json(updatedProfile);
   } catch (error) {
-    console.error('Error updating/creating profile:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    console.error('Profile update error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

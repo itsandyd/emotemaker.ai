@@ -1,37 +1,27 @@
-import { fabric } from "fabric";
-import { useEffect, useState } from "react";
+"use client"
 
-interface useCanvasEventsProps {
-    canvas: fabric.Canvas | null;
-    setSelectedObjects: (objects: fabric.Object[]) => void;
-    clearSelectionCallback?: () => void;
+import Konva from "konva";
+import { useEffect } from "react";
+
+interface UseCanvasEventsProps {
+    stage: Konva.Stage | null;
+    editor: any;
 }
 
-export const useCanvasEvents = ({ canvas, setSelectedObjects, clearSelectionCallback }: useCanvasEventsProps) => {
+export const useCanvasEvents = ({ stage, editor }: UseCanvasEventsProps) => {
     useEffect(() => {
-        if (canvas) {
-            canvas.on("selection:created", (e) => {
-                console.log("selection:created", e);
-                setSelectedObjects(e.selected || []);
-            });
-            canvas.on("selection:updated", (e) => {
-                console.log("selection:updated", e);
-                setSelectedObjects(e.selected || []);
-            });
-            canvas.on("selection:cleared", (e) => {
-                console.log("selection:cleared", e);
-                setSelectedObjects([]);
-                clearSelectionCallback?.();
-            });
-        }
+        if (!stage || !editor) return;
 
-        return () => {
-            if (canvas) {
-                canvas?.off("selection:created");
-                canvas?.off("selection:updated");
-                canvas?.off("selection:cleared");
-            }
+        // Only handle drag movement - let the main editor handle click events and transformers
+        const handleDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
+            // Allow free dragging and update the layer
+            e.target.getLayer()?.batchDraw();
         };
 
-    }, [canvas, setSelectedObjects, clearSelectionCallback ]);
-}
+        stage.on('dragmove', handleDragMove);
+
+        return () => {
+            stage.off('dragmove', handleDragMove);
+        };
+    }, [stage, editor]);
+};

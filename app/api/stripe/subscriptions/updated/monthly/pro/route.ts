@@ -7,6 +7,10 @@ import { stripe } from "@/lib/stripe";
 
 const settingsUrl = absoluteUrl("/");
 
+// Define the price ID and product ID for the Pro plan
+const PRO_PLAN_PRICE_ID = 'price_1Q8GLiIlERZTJMCm1QFpLRh3';
+const PRO_PLAN_PRODUCT_ID = 'prod_R0GtA581lsO490';
+
 export async function GET(req: Request) {
   try {
     const { userId } = auth();
@@ -42,17 +46,7 @@ export async function GET(req: Request) {
       customer_email: user.emailAddresses[0].emailAddress,
       line_items: [
         {
-          price_data: {
-            currency: "USD",
-            product_data: {
-              name: "EmoteMaker.ai Creator Plan",
-              description: "Generate unique emotes with a single prompt. For $45/month, receive 500 credits to create custom emotes."
-            },
-            unit_amount: 45000,
-            recurring: {
-              interval: "month"
-            }
-          },
+          price: PRO_PLAN_PRICE_ID,
           quantity: 1,
         },
       ],
@@ -64,8 +58,14 @@ export async function GET(req: Request) {
     })
 
     return new NextResponse(JSON.stringify({ url: stripeSession.url }))
-  } catch (error) {
-    console.log("[STRIPE_ERROR]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+  } catch (error: unknown) {
+    console.error("[STRIPE_ERROR]", error);
+    return new NextResponse(
+      JSON.stringify({ 
+        error: "Internal Server Error", 
+        details: error instanceof Error ? error.message : String(error)
+      }), 
+      { status: 500 }
+    );
   }
 }

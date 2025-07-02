@@ -5,55 +5,12 @@ import { useEffect, useState } from "react";
 import { checkSubscription } from "../lib/subscription";
 
 
-import { auth } from "@clerk/nextjs/server";
 import { useUser } from '@clerk/nextjs'
 import { useProModal } from "../hooks/use-pro-modal";
 import { getUser } from "../actions/get-user";
 import Landing from "../components/Landing";
-import Footer from "../components/Footer";
+  import {Footer }from "../components/Footer";
 import { useRouter } from "next/navigation";
-
-
-
-// const demophotos = [
-//   {
-//     id: 5,
-//     image: "/asmonemote.png",
-//   },
-//   {
-//     id: 6,
-//     image: "/quinemote.png",
-//   },
-//   {
-//     id: 7,
-//     image: "/esfandemote1.png",
-//   },
-//   {
-//     id: 7,
-//     image: "/tyler1.png",
-//   },
-//   {
-//   id: 1,
-//   image: "/foxemote1.png",
-// },
-// {
-//   id: 2,
-//   image: "/elf.png",
-// },
-// {
-//   id: 3,
-//   image: "/determinedcat.png",
-// },
-// {
-//   id: 4,
-//   image: "/gamercat.png",
-// },
-
-// ]; 
-
-// interface UserProps {
-//   userId: string
-// }
 
 export default function LandingPage() {
   const [isPro, setIsPro] = useState(false);
@@ -64,15 +21,18 @@ export default function LandingPage() {
   useEffect(() => {
     const initUser = async () => {
       if (user) {
-        const name = user.firstName || 'Default Name';
-        const email = user.primaryEmailAddress?.emailAddress || 'default@example.com';
-        console.log("Updating user:", user.id, name, email); // Debugging line
-        await getUser({ userId: user.id, name, email });
+        try {
+          const name = user.firstName || 'Default Name';
+          const email = user.primaryEmailAddress?.emailAddress || 'default@example.com';
+          await getUser({ userId: user.id, name, email });
+        } catch (error) {
+          console.error("Failed to initialize user:", error);
+        }
       }
     };
   
     initUser();
-  }, [user]); // Dependency array includes user to re-run when user changes
+  }, [user]);
 
   useEffect(() => {
     const fetchIsPro = async () => {
