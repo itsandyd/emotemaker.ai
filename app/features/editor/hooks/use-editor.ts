@@ -1,3 +1,5 @@
+"use client"
+
 import { useCallback, useState, useMemo, useRef } from "react";
 import Konva from 'konva';
 import { KonvaEditor, WorkspaceType, VideoObject, DEFAULT_WORKSPACE_CONFIGS, DEFAULT_EDITOR_STATE, EditorState, ShapeType, KonvaTextOptions, FilterType, LayerType, ActiveTool, AnimationConfig } from "../types";

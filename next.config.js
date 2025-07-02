@@ -18,6 +18,7 @@ const nextConfig = {
       "pprcanvas.s3.amazonaws.com",
       "emotemaker.ai",
     ],
+    unoptimized: true,
     formats: ['image/webp', 'image/avif'],
     minimumCacheTTL: 60,
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -53,48 +54,26 @@ const nextConfig = {
       config.externals.push({
         canvas: "commonjs canvas",
         "canvas-prebuilt": "commonjs canvas-prebuilt",
+        // Add browser-only libraries to prevent server-side bundling
+        "jspdf": "jspdf",
+        "gif.js": "gif.js",
+        "konva": "konva",
       });
     }
 
-    // Fix for browser-only packages in server-side rendering
-    if (isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        path: false,
-        crypto: false,
-        stream: false,
-        util: false,
-        buffer: false,
-        events: false,
-        'ua-parser-js': false, // Fix for ua-parser-js middleware issue
-      };
-    }
-
-    // Define global variables for browser compatibility
-    const webpack = require('webpack');
-    config.plugins.push(
-      new webpack.DefinePlugin({
-        'typeof window': isServer ? JSON.stringify('undefined') : JSON.stringify('object'),
-        'typeof self': isServer ? JSON.stringify('undefined') : JSON.stringify('object'),
-        'typeof navigator': isServer ? JSON.stringify('undefined') : JSON.stringify('object'),
-        'typeof document': isServer ? JSON.stringify('undefined') : JSON.stringify('object'),
-      })
-    );
-
-    // Production optimizations
-    if (!dev) {
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
-          },
-        },
-      };
-    }
+    // Temporarily disable splitChunks to isolate the issue
+    // if (!dev) {
+    //   config.optimization.splitChunks = {
+    //     chunks: 'all',
+    //     cacheGroups: {
+    //       vendor: {
+    //         test: /[\\/]node_modules[\\/]/,
+    //         name: 'vendors',
+    //         chunks: 'all',
+    //       },
+    //     },
+    //   };
+    // }
 
     // Node loader for .node files
     config.module.rules.push({
@@ -106,9 +85,7 @@ const nextConfig = {
   },
   
   experimental: {
-    serverComponentsExternalPackages: ["canvas"],
-    // Temporarily disable CSS optimization to fix critters issue
-    // optimizeCss: true,
+    serverComponentsExternalPackages: ["canvas", "jspdf", "gif.js", "konva"],
     optimizePackageImports: [
       'lucide-react',
       '@radix-ui/react-icons',

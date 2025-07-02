@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useCallback, useMemo } from 'react';
 import { ActiveTool } from '../types';
 import { Emote } from '@prisma/client';

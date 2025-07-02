@@ -21,7 +21,6 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import Konva from "konva";
 
 interface ToolbarProps {
     editor: KonvaEditor | null;
@@ -506,8 +505,8 @@ export const Toolbar = ({
                                 if (isVideo && editor.selectedNode && editor.isVideoObject(editor.selectedNode)) {
                                     console.log('Video node attributes:', editor.selectedNode.attrs);
                                     // Get the video node, handling the case where we might have selected the image inside the group
-                                    const videoNode = editor.selectedNode instanceof Konva.Image && editor.selectedNode.parent?.getAttr('objectType') === 'video'
-                                        ? editor.selectedNode.parent
+                                    const videoNode = (editor.selectedNode as any)?.parent?.getAttr('objectType') === 'video'
+                                        ? (editor.selectedNode as any).parent
                                         : editor.selectedNode;
                                     
                                     const videoElement = videoNode.getAttr('videoElement') as HTMLVideoElement;

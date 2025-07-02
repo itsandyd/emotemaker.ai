@@ -25,7 +25,6 @@ import { InpaintSidebar } from "./inpaint-sidebar"
 import { VideoSidebar } from "./video-sidebar"
 import { VideoControls } from './video-controls'
 import { AnimationSidebar } from './animation-sidebar'
-import Konva from 'konva'
 import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
@@ -380,10 +379,8 @@ export const Editor = ({
                   const transformers = editor.stage?.find('Transformer');
                   if (transformers?.length) {
                     transformers.forEach(transformer => {
-                      if (transformer instanceof Konva.Transformer) {
-                        transformer.nodes([]);
-                        transformer.getLayer()?.batchDraw();
-                      }
+                      (transformer as any).nodes([]);
+                      transformer.getLayer()?.batchDraw();
                     });
                   }
                 }

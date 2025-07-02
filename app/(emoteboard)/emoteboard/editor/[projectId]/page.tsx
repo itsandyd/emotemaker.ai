@@ -1,4 +1,3 @@
-import { Editor } from "@/app/features/editor/components/editor";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { fetchUserEmotes } from "@/actions/fetchUserEmotes";
@@ -9,6 +8,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Palette, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import dynamic from "next/dynamic";
+
+// Dynamically import the Editor with no SSR to prevent server-side execution of browser-only code
+const EditorClient = dynamic(() => import("@/app/features/editor/components/editor-client").then(mod => ({ default: mod.EditorClient })), {
+  ssr: false,
+  loading: () => <EditorLoading />
+});
 
 interface EditorProjectIdPageProps {
   params: {
@@ -158,7 +164,7 @@ const EditorProjectIdPage = async ({
   return (
       <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100">
         <Suspense fallback={<EditorLoading />}>
-      <Editor 
+      <EditorClient 
         userId={userId} 
         emotes={emotes}
         initialWorkspaceType={editorType}
