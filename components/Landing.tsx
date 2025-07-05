@@ -15,7 +15,7 @@ import { useUser } from "@clerk/nextjs"
 import { generation } from "@/app/features/editor/types";
 import { motion } from "framer-motion";
 import { Card, CardTitle, CardDescription, CardHeader, CardContent } from "@/components/ui/card"
-
+import { Footer } from "@/components/Footer"
 
 import { HeroSection } from "@/components/sections/HeroSection";
 import { ProcessSection } from "@/components/sections/ProcessSection";
@@ -174,6 +174,7 @@ export default function Landing() {
       <GallerySection />
       <TestimonialsSection />
       <CTASection />
+      <Footer />
     </motion.div>
   )
 }

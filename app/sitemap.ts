@@ -14,12 +14,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: emote.updatedAt,
   }))
 
+  // Static pages that should be indexed
+  const staticPages = [
+    '',
+    '/marketplace',
+    '/dashboard',
+    '/pricing',
+    '/credits',
+    '/models',
+    '/chibi',
+    '/kawaii',
+    '/pepe',
+    '/pixel',
+    '/ghibli',
+    '/3d',
+    '/cuteboldlines',
+    '/sell-with-us',
+    '/tools/remove-background',
+    '/tools/imagetoprompt',
+    '/knowledge-center',
+    '/showcase',
+    '/my-emotes',
+  ]
+
+  const staticUrls = staticPages.map((page) => ({
+    url: `${baseUrl}${page}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: page === '' ? 1.0 : 0.8,
+  }))
+
   return [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-    },
+    ...staticUrls,
     ...emoteUrls,
-    // Add other static routes here
   ]
 }
