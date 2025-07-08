@@ -1,12 +1,12 @@
 import { db } from "@/lib/db";
-import { Prisma, EmoteStatus, EmotePack, EmoteForSale, Emote } from "@prisma/client";
+import { Prisma, EmoteStatus, EmotePack, EmoteForSale, Emote, EmotePackItem } from "@prisma/client";
 
 export interface EmotePackWithItems extends EmotePack {
-  emotePackItems: {
+  emotePackItems: (EmotePackItem & {
     emoteForSale: EmoteForSale & {
       emote: Emote
     }
-  }[];
+  })[];
 }
 
 export interface GetEmotePacksResult {

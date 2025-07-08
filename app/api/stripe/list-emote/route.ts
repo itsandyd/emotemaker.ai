@@ -73,7 +73,7 @@ export async function POST(req: Request) {
         stripePriceId: stripePrice.id,
         stripePriceAmount: Math.round(price * 100),
         stripePriceCurrency: 'usd',
-        status: 'PUBLISHED',
+        status: 'MARKETPLACE_PUBLISHED',
       },
       create: {
         emoteId: emote.id,
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
         stripePriceId: stripePrice.id,
         stripePriceAmount: Math.round(price * 100),
         stripePriceCurrency: 'usd',
-        status: 'PUBLISHED',
+        status: 'MARKETPLACE_PUBLISHED',
       },
     });
 

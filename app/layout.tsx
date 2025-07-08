@@ -1,5 +1,5 @@
 import './globals.css'
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { ClerkProvider } from '@clerk/nextjs'
 import { auth, currentUser } from '@clerk/nextjs/server'
@@ -57,11 +57,6 @@ export const metadata: Metadata = {
     images: ['https://emotemaker.ai/twitter-image.png'],
     creator: '@EmoteMakerAI',
   },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-  },
   robots: {
     index: true,
     follow: true,
@@ -73,11 +68,17 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  category: 'Technology',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
     { media: '(prefers-color-scheme: dark)', color: '#000000' },
   ],
-  category: 'Technology',
 }
 
 export default async function RootLayout({

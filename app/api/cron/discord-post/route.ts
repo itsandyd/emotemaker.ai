@@ -21,7 +21,7 @@ async function getRecentEmotes() {
       createdAt: {
         gte: twentyFourHoursAgo
       },
-      status: 'PUBLISHED',
+      status: 'MARKETPLACE_PUBLISHED',
       watermarkedUrl: {
         not: null
       }

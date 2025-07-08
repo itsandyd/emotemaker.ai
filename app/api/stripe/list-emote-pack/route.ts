@@ -39,14 +39,16 @@ export async function POST(req: Request) {
       return new NextResponse("Emote pack not found", { status: 404 });
     }
 
-    // Verify all emotes are published and valid
+    // Verify all emotes are published and valid (can be either PUBLISHED or MARKETPLACE_PUBLISHED)
     const emoteForSaleList = await db.emoteForSale.findMany({
       where: {
         id: {
           in: emoteIds
         },
         userId,
-        status: "PUBLISHED"
+        status: {
+          in: ["PUBLISHED", "MARKETPLACE_PUBLISHED"]
+        }
       }
     });
 
@@ -96,7 +98,7 @@ export async function POST(req: Request) {
         stripePriceId: stripePrice.id,
         stripePriceAmount: priceInCents,
         stripePriceCurrency: 'usd',
-        status: 'PUBLISHED',
+        status: 'MARKETPLACE_PUBLISHED',
       },
     });
 

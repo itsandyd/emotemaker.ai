@@ -17,7 +17,7 @@ export const getEmotesForSale = async ({
   const skip = (page - 1) * itemsPerPage;
 
   const whereClause: Prisma.EmoteForSaleWhereInput = {
-    status: EmoteStatus.PUBLISHED,
+    status: EmoteStatus.MARKETPLACE_PUBLISHED,
     ...(search ? {
       OR: [
         { prompt: { contains: search } },
