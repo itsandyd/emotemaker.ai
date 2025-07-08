@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Emote } from "@prisma/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -52,14 +52,7 @@ export default function AddEmoteDialog({ userId }: AddEmoteDialogProps) {
   const [customCoverUrl, setCustomCoverUrl] = useState("");
   const [packStep, setPackStep] = useState(1);
 
-  // Fetch user's emotes when dialog opens
-  useEffect(() => {
-    if (open && mode !== 'choice') {
-      fetchUserEmotes();
-    }
-  }, [open, mode, currentPage, userId]);
-
-  const fetchUserEmotes = async () => {
+  const fetchUserEmotes = useCallback(async () => {
     if (!userId) return;
     
     setIsLoadingEmotes(true);
@@ -84,7 +77,14 @@ export default function AddEmoteDialog({ userId }: AddEmoteDialogProps) {
     } finally {
       setIsLoadingEmotes(false);
     }
-  };
+  }, [userId, currentPage, mode]);
+
+  // Fetch user's emotes when dialog opens
+  useEffect(() => {
+    if (open && mode !== 'choice') {
+      fetchUserEmotes();
+    }
+  }, [open, mode, fetchUserEmotes]);
 
   const resetDialog = () => {
     setMode('choice');
@@ -724,7 +724,7 @@ export default function AddEmoteDialog({ userId }: AddEmoteDialogProps) {
                 <div className="bg-green-50 p-4 rounded-lg">
                   <h5 className="font-medium text-green-900 mb-2">Earnings Estimate</h5>
                   <p className="text-sm text-green-700">
-                    You'll earn: ${(packPrice * 0.85).toFixed(2)} (15% platform fee)
+                    You&apos;ll earn: ${(packPrice * 0.85).toFixed(2)} (15% platform fee)
                   </p>
                   <p className="text-xs text-green-600 mt-1">
                     Platform fee: ${(packPrice * 0.15).toFixed(2)}
