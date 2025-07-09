@@ -126,18 +126,18 @@ function buildEmoteOrderBy(sortBy: string): Prisma.EmoteForSaleOrderByWithRelati
 
 const MarketplacePage = async ({ searchParams }: MarketplacePageProps) => {
   try {
-    const { userId } = auth();
-    
-    if (!userId) {
-      redirect('/sign-in');
-    }
+  const { userId } = auth();
+  
+  if (!userId) {
+    redirect('/sign-in');
+  }
 
     // Validate and sanitize search parameters
     const validatedParams = validateSearchParams(searchParams);
     const { page, search, style, model, priceRange, sortBy, tab } = validatedParams;
 
     // Calculate pagination
-    const skip = (page - 1) * ITEMS_PER_PAGE;
+  const skip = (page - 1) * ITEMS_PER_PAGE;
 
     // Build where clause for emotes
     const emoteWhere = buildEmoteWhereClause({ search, style, model, priceRange });
@@ -154,29 +154,29 @@ const MarketplacePage = async ({ searchParams }: MarketplacePageProps) => {
       availableModels,
     ] = await Promise.all([
       // Main emotes query
-      db.emoteForSale.findMany({
-        where: emoteWhere,
-        include: {
-          emote: true,
-        },
+    db.emoteForSale.findMany({
+      where: emoteWhere,
+      include: {
+        emote: true,
+      },
         orderBy,
-        skip,
-        take: ITEMS_PER_PAGE,
-      }),
+      skip,
+      take: ITEMS_PER_PAGE,
+    }),
 
       // Count total emotes
-      db.emoteForSale.count({
-        where: emoteWhere,
-      }),
+    db.emoteForSale.count({
+      where: emoteWhere,
+    }),
 
       // User's emotes for purchase validation
-      db.emote.findMany({
-        where: {
-          userId,
-        },
-        include: {
-          emoteForSale: true,
-        },
+    db.emote.findMany({
+      where: {
+        userId,
+      },
+      include: {
+        emoteForSale: true,
+      },
         orderBy: {
           createdAt: 'desc',
         },
@@ -219,11 +219,11 @@ const MarketplacePage = async ({ searchParams }: MarketplacePageProps) => {
         orderBy: {
           model: 'asc',
         },
-      }),
-    ]);
+    }),
+  ]);
 
     // Calculate pagination info
-    const totalEmotePages = Math.ceil(totalEmotes / ITEMS_PER_PAGE);
+  const totalEmotePages = Math.ceil(totalEmotes / ITEMS_PER_PAGE);
 
     // Process filter options
     const styleOptions = availableStyles

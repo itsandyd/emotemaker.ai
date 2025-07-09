@@ -1,6 +1,16 @@
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development'
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Remove static export for now - we'll use hybrid approach
+  // output: 'export',
+  // trailingSlash: true,
   
   // Performance optimizations
   swcMinify: true,
@@ -101,4 +111,4 @@ const nextConfig = {
   })
 };
 
-module.exports = nextConfig;
+module.exports = withPWA(nextConfig);

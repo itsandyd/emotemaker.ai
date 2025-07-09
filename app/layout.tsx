@@ -34,6 +34,12 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'EmoteMaker.ai',
+  },
   openGraph: {
     title: 'EmoteMaker.ai - AI-Powered Custom Emote Creator',
     description: 'Create unique, eye-catching emotes for your Twitch and Discord channels using advanced AI technology.',
@@ -75,6 +81,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  userScalable: false,
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
     { media: '(prefers-color-scheme: dark)', color: '#000000' },
@@ -114,6 +121,16 @@ export default async function RootLayout({
     <ClerkProvider>
       <html lang="en" className="h-full">
         <head>
+          {/* PWA Meta Tags */}
+          <meta name="apple-mobile-web-app-capable" content="yes" />
+          <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+          <meta name="apple-mobile-web-app-title" content="EmoteMaker.ai" />
+          <meta name="mobile-web-app-capable" content="yes" />
+          
+          {/* Apple Touch Icons */}
+          <link rel="apple-touch-icon" href="/favicon.png" />
+          <link rel="icon" type="image/png" href="/favicon.png" />
+          
           {/* Preload critical resources */}
           <link rel="preload" href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css" as="style" />
           <link href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css" rel="stylesheet" />

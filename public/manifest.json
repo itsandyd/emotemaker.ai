@@ -1,0 +1,35 @@
+{
+  "name": "EmoteMaker.ai - Custom Emote Creator",
+  "short_name": "EmoteMaker",
+  "description": "Create custom emotes for Twitch and Discord with AI",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "en-US",
+  "categories": ["entertainment", "graphics", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Create Emote",
+      "short_name": "Create",
+      "description": "Start creating a new emote",
+      "url": "/create"
+    },
+    {
+      "name": "Marketplace",
+      "short_name": "Shop",
+      "description": "Browse emote marketplace",
+      "url": "/marketplace"
+    }
+  ]
+} 
